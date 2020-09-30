@@ -1,0 +1,200 @@
+use std::net::IpAddr;
+use std::path::PathBuf;
+use std::process::Command;
+
+use anyhow::{ensure, Context, Result};
+use log::warn;
+
+use super::{find_binary, Firewall, Target};
+
+pub struct IpSet {
+    name: &'static str,
+    ipset_path: PathBuf,
+    iptables_path: PathBuf,
+}
+
+impl IpSet {
+    pub fn new() -> Result<Self> {
+        if cfg!(not(target_os = "linux")) {
+            warn!("The ipset firewall is only supported on Linux systems");
+            warn!("Instead you will see commands that would be run instead");
+            warn!("This firewall will not do any actual work on your system");
+        }
+
+        Ok(Self {
+            name: env!("CARGO_PKG_NAME"),
+            ipset_path: find_binary("ipset")?,
+            iptables_path: find_binary("iptables")?,
+        })
+    }
+}
+
+impl Firewall for IpSet {
+    fn install(&self) -> Result<()> {
+        let output = Command::new(&self.ipset_path)
+            .args(&["list", "-n"])
+            .output()
+            .context("failed running ipset")?;
+
+        ensure!(
+            output.status.success(),
+            "failed listing ipset table names: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let output = String::from_utf8(output.stdout)?;
+
+        if !output.lines().any(|l| l == self.name) {
+            let output = Command::new(&self.ipset_path)
+                .args(&["create", self.name, "hash:ip"])
+                .output()
+                .context("failed running ipset")?;
+
+            ensure!(
+                output.status.success(),
+                "failed creating new ipset table: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        let output = Command::new(&self.iptables_path)
+            .arg("-S")
+            .output()
+            .context("failed running iptables")?;
+
+        ensure!(
+            output.status.success(),
+            "failed listing iptables rules: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let output = String::from_utf8(output.stdout)?;
+
+        let rule = format!(
+            "-A INPUT -p tcp -m state --state NEW -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
+            &self.name
+        );
+
+        if !output.lines().any(|l| l == rule) {
+            let output = Command::new(&self.iptables_path)
+                .args(&[
+                    "-I",
+                    "INPUT",
+                    "-p",
+                    "tcp",
+                    "-m",
+                    "state",
+                    "--state",
+                    "NEW",
+                    "-m",
+                    "multiport",
+                    "--dports",
+                    "80,443",
+                    "-m",
+                    "set",
+                    "--match-set",
+                    self.name,
+                    "src",
+                    "-j",
+                    "DROP",
+                ])
+                .output()?;
+
+            ensure!(
+                output.status.success(),
+                "failed adding iptables rule: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        Ok(())
+    }
+
+    fn uninstall(&self) -> Result<()> {
+        loop {
+            let output = Command::new(&self.iptables_path)
+                .args(&[
+                    "-D",
+                    "INPUT",
+                    "-p",
+                    "tcp",
+                    "-m",
+                    "state",
+                    "--state",
+                    "NEW",
+                    "-m",
+                    "multiport",
+                    "--dports",
+                    "80,443",
+                    "-m",
+                    "set",
+                    "--match-set",
+                    self.name,
+                    "src",
+                    "-j",
+                    "DROP",
+                ])
+                .output()
+                .context("failed running iptables")?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.starts_with("iptables: Bad rule ") {
+                    warn!("failed deleting iptables rule: {}", stderr);
+                }
+                break;
+            }
+        }
+
+        let output = Command::new(&self.ipset_path)
+            .args(&["destroy", self.name])
+            .output()
+            .context("failed running ipset")?;
+
+        ensure!(
+            output.status.success(),
+            "failed deleting ipset table: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        Ok(())
+    }
+
+    fn block<'a>(&self, target: &Target<'a>) -> Result<()> {
+        if let IpAddr::V4(ip) = target.ip {
+            let output = Command::new(&self.ipset_path)
+                .args(&["add", self.name, &ip.to_string()])
+                .output()
+                .context("failed running ipset")?;
+
+            ensure!(
+                output.status.success(),
+                "failed adding IP to ipset table: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        } else {
+            warn!("ipv6 addresses not supported yet");
+        }
+
+        Ok(())
+    }
+
+    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()> {
+        if let IpAddr::V4(ip) = target.ip {
+            let output = Command::new(&self.ipset_path)
+                .args(&["del", self.name, &ip.to_string()])
+                .output()
+                .context("failed running ipset")?;
+
+            ensure!(
+                output.status.success(),
+                "failed deleting IP from ipset table: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        } else {
+            warn!("ipv6 addresses not supported yet");
+        }
+
+        Ok(())
+    }
+}
