@@ -13,6 +13,7 @@ repository = "https://github.com/dnaka91/veto"
 maintainer-scripts = "debian/"
 systemd-units = { enable = false }
 license-file = ["LICENSE", "0"]
+depends = "$auto, ipset"
 assets = [
     ["target/release/veto", "/usr/bin/veto", "755"],
     ["README.md", "/usr/share/doc/veto/README.md", "644"],
