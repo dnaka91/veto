@@ -1,6 +1,6 @@
 # 🗳 Veto
 
-A lightweight, log files based IP blocker with focus on simplicity and speed.
+A lightweight, log file based IP blocker with focus on simplicity and speed.
 
 ⚠️ Warning ⚠️ : This project is still in a very early stage. Expect things to break or not work
 right from time to time. The configuration structure may change any time.

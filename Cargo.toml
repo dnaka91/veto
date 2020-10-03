@@ -5,7 +5,7 @@ authors = ["Dominik Nakamura <dnaka91@gmail.com>"]
 edition = "2018"
 license = "AGPL-3.0-only"
 readme = "README.md"
-description = "A lightweight, log files based IP blocker with focus on simplicity and speed."
+description = "A lightweight, log file based IP blocker with focus on simplicity and speed."
 homepage = "https://github.com/dnaka91/veto"
 repository = "https://github.com/dnaka91/veto"
 

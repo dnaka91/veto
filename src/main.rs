@@ -27,7 +27,7 @@ mod storage;
 type HashMap<K, V> = std::collections::HashMap<K, V, RandomState>;
 type HashSet<T> = std::collections::HashSet<T, RandomState>;
 
-/// A lightweight, log files based IP blocker with focus on simplicity and speed.
+/// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Clap)]
 #[clap(about, author, setting = AppSettings::ColoredHelp)]
 struct Opts {
