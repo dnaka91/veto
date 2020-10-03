@@ -26,6 +26,13 @@ for your system and enable it in systemd.
 
 A deb package can be found in the release section for easy installation on Debian based systems.
 
+### Required software
+
+Veto currently requires `ipset` and `iptables` to be present on the system which should be available
+through your package manager.
+
+Veto doesn't implement a firewall itself but orchestrates existing systems instead. To not pollute your list of iptables ruleset it uses ipset. This allows to let iptables rules check against a separate list of IPs that are managed by ipset and only requires a single rule in iptables.
+
 ## Configuration
 
 Veto uses a single configuration file to read all settings and blocking rules. The config is
