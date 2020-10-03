@@ -1,5 +1,7 @@
 # 🗳 Veto
 
+![CI](https://github.com/dnaka91/veto/workflows/CI/badge.svg?branch=main)
+
 A lightweight, log file based IP blocker with focus on simplicity and speed.
 
 ⚠️ Warning ⚠️ : This project is still in a very early stage. Expect things to break or not work
