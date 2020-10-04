@@ -2,14 +2,14 @@
 
 whitelist = ["192.168.1.0/24"]
 
-[[rules]]
+[rules.web]
 file = "/etc/logs/access.log"
 filters = [
     '^<HOST> - - \[<TIME>\] "<METHOD> (?P<path>/.*) HTTP/\d\.\d" [3-4]\d{2} \d+ "(?P<ref>[^"]+)" "(?P<ua>[^"]+)"',
 ]
 timeout = "3d"
 
-[rules.blacklists]
+[rules.web.blacklists]
 path = [".aspx", ".env", "cgi-bin", "php"]
 ua = [
     "dotbot",

@@ -14,7 +14,12 @@ Example:
 whitelist = ["127.0.0.1/32", "192.168.1.0/24"]
 ```
 
-## `rules`
+## `rules.<name>`
+
+Rules are the definitions of a files that should be watched, filters applied on the log entries and
+all other important settings to these. Each rule must be uniquely named, for example `[rules.web]`.
+
+A full example can be found at the bottom of this document.
 
 ### `file`
 
@@ -65,7 +70,7 @@ during startup as long as they're still within the timeout time.
 timeout = "3d"
 ```
 
-### `rules.blacklists`
+### `rules.<name>.blacklists`
 
 The blacklists of a rule extend the [filters](#filters) but are optional. If no blacklists are
 defined, then a matching filter is enough for an IP to be put on the blocklist.
@@ -97,14 +102,14 @@ by the web services and common bot names.
 ```toml
 whitelist = ["192.168.1.0/24"]
 
-[[rules]]
+[rules.web]
 file = "/etc/logs/access.log"
 filters = [
     '^<HOST> - - \[<TIME>\] "<METHOD> (?P<path>/.*) HTTP/\d\.\d" [3-4]\d{2} \d+ "(?P<ref>[^"]+)" "(?P<ua>[^"]+)"',
 ]
 timeout = "3d"
 
-[rules.blacklists]
+[rules.web.blacklists]
 path = [".aspx", ".env", "cgi-bin", "php"]
 ua = [
     "dotbot",
