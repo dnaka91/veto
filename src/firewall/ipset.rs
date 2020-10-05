@@ -167,11 +167,14 @@ impl Firewall for IpSet {
                 .output()
                 .context("failed running ipset")?;
 
-            ensure!(
-                output.status.success(),
-                "failed adding IP to ipset table: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
+            if !output.status.success() {
+                let message = String::from_utf8_lossy(&output.stderr);
+                ensure!(
+                    is_expected_error(&message, RunType::Add),
+                    "failed adding IP to ipset table: {}",
+                    message
+                );
+            }
         } else {
             warn!("ipv6 addresses not supported yet");
         }
@@ -186,15 +189,39 @@ impl Firewall for IpSet {
                 .output()
                 .context("failed running ipset")?;
 
-            ensure!(
-                output.status.success(),
-                "failed deleting IP from ipset table: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
+            if !output.status.success() {
+                let message = String::from_utf8_lossy(&output.stderr);
+                ensure!(
+                    is_expected_error(&message, RunType::Delete),
+                    "failed deleting IP from ipset table: {}",
+                    message
+                );
+            }
         } else {
             warn!("ipv6 addresses not supported yet");
         }
 
         Ok(())
     }
+}
+
+#[derive(Copy, Clone)]
+enum RunType {
+    Add,
+    Delete,
+}
+
+fn is_expected_error(message: &str, ty: RunType) -> bool {
+    let mut parts = message.splitn(2, ": ");
+
+    if let (Some(prefix), Some(msg)) = (parts.next(), parts.next()) {
+        return prefix.starts_with("ipset v")
+            && msg
+                == match ty {
+                    RunType::Add => "Element cannot be added to the set: it's already added",
+                    RunType::Delete => "Element cannot be deleted from the set: it's not added",
+                };
+    }
+
+    false
 }
