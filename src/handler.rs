@@ -10,10 +10,11 @@ use aho_corasick::AhoCorasickBuilder;
 use anyhow::Result;
 use chrono::prelude::*;
 use ipnetwork::IpNetwork;
-use log::{debug, info, trace, warn};
+use log::{debug, info, warn};
 use regex::Regex;
 
 use crate::firewall::{Firewall, Target};
+use crate::matcher::Matcher;
 use crate::notifier::{Event, EventType};
 use crate::settings::Rule;
 use crate::storage::TargetRepository;
@@ -21,16 +22,15 @@ use crate::HashMap;
 
 pub struct Entry {
     pub name: String,
-    lines: Option<Lines<BufReader<File>>>,
     pub matchers: Vec<Regex>,
     pub blacklists: HashMap<String, AhoCorasick>,
-    pub time: DateTime<FixedOffset>,
     pub rule: Rule,
 }
 
-const HOST_GROUP: &str = "host";
-const TIME_GROUP: &str = "time";
-const TIME_FORMAT: &str = "%d/%b/%Y:%T %z";
+pub struct State {
+    lines: Option<Lines<BufReader<File>>>,
+    pub time: DateTime<Utc>,
+}
 
 static RULE_REGEXS: phf::Map<&str, &str> = phf::phf_map! {
     "<HOST>" => r"(?P<host>(?:[0-9]{1,3}\.){3}[0-9]{1,3}|(?:[a-fA-F0-9]{0,4}:){1,}[a-fA-F0-9]{1,4})",
@@ -55,10 +55,10 @@ where
 {
     pub fn handle_event(
         &mut self,
-        files: &mut HashMap<PathBuf, Entry>,
+        files: &mut HashMap<PathBuf, (Entry, State)>,
         event: Event,
     ) -> Result<()> {
-        let mut entry = if let Some(e) = files.get_mut(&event.path) {
+        let (entry, ref mut state) = if let Some(e) = files.get_mut(&event.path) {
             e
         } else {
             return Ok(());
@@ -67,17 +67,17 @@ where
         match event.ty {
             EventType::Modified => {
                 debug!("modified");
-                self.handle_modified(&mut entry)?;
+                self.handle_modified(entry, state)?;
             }
             EventType::Removed => {
                 debug!("removed");
-                entry.lines.take();
+                state.lines.take();
             }
             EventType::Created => {
                 debug!("created");
                 let file = File::open(event.path)?;
                 let file = BufReader::new(file);
-                entry.lines.replace(file.lines());
+                state.lines.replace(file.lines());
             }
         }
 
@@ -85,13 +85,15 @@ where
     }
 
     #[allow(clippy::unused_self)]
-    pub fn check_lines(&self, entry: &mut Entry) -> Option<IpAddr> {
-        let lines = match &mut entry.lines {
+    pub fn check_lines(&self, entry: &Entry, state: &mut State) -> Option<IpAddr> {
+        let State { lines, time } = state;
+
+        let lines = match lines {
             Some(l) => l,
             None => return None,
         };
 
-        let now: DateTime<FixedOffset> = Utc::now().into();
+        let matcher = Matcher::new();
 
         for line in lines {
             let line = match line {
@@ -102,53 +104,16 @@ where
                 }
             };
 
-            for matcher in &entry.matchers {
-                if let Some(caps) = matcher.captures(&line) {
-                    trace!("captures: {:?}", caps);
-
-                    match caps
-                        .name(TIME_GROUP)
-                        .and_then(|time| DateTime::parse_from_str(time.as_str(), TIME_FORMAT).ok())
-                    {
-                        Some(time) => {
-                            trace!("time: {}", time);
-                            if time < entry.time || now - time > entry.rule.timeout {
-                                break;
-                            }
-
-                            entry.time = time;
-                        }
-                        None => continue,
-                    }
-
-                    let host = match caps.name(HOST_GROUP).and_then(|v| v.as_str().parse().ok()) {
-                        Some(value) => value,
-                        None => continue,
-                    };
-
-                    if entry.blacklists.is_empty() {
-                        return Some(host);
-                    }
-
-                    for (name, blacklist) in &entry.blacklists {
-                        if let Some(value) = caps.name(name) {
-                            let res = blacklist.find(value.as_str());
-                            debug!("blacklist '{}': {:?}", name, res);
-
-                            if res.is_some() {
-                                return Some(host);
-                            }
-                        }
-                    }
-                }
+            if let Some(addr) = matcher.find(entry, time, &line) {
+                return Some(addr);
             }
         }
 
         None
     }
 
-    pub fn handle_modified(&mut self, entry: &mut Entry) -> Result<()> {
-        while let Some(addr) = self.check_lines(entry) {
+    pub fn handle_modified(&mut self, entry: &Entry, state: &mut State) -> Result<()> {
+        while let Some(addr) = self.check_lines(entry, state) {
             if self.whitelist.iter().any(|wl| wl.contains(addr)) {
                 info!("skipping whitelisted {}", addr);
                 continue;
@@ -175,12 +140,12 @@ where
         Ok(())
     }
 
-    pub fn handle_unblock(&mut self, files: &HashMap<PathBuf, Entry>) -> Result<()> {
+    pub fn handle_unblock(&mut self, files: &HashMap<PathBuf, (Entry, State)>) -> Result<()> {
         let now = Utc::now();
 
         if self.last_unblock < now {
             self.storage.iter_outdated(|addr, path| {
-                let entry = if let Some(e) = files.get(path) {
+                let (entry, _) = if let Some(e) = files.get(path) {
                     e
                 } else {
                     return Ok(());
@@ -205,7 +170,7 @@ where
     }
 }
 
-pub fn prepare_rules(rules: HashMap<String, Rule>) -> Result<HashMap<PathBuf, Entry>> {
+pub fn prepare_rules(rules: HashMap<String, Rule>) -> Result<HashMap<PathBuf, (Entry, State)>> {
     let mut files = HashMap::with_hasher(RandomState::new());
 
     for (name, mut rule) in rules {
@@ -217,7 +182,7 @@ pub fn prepare_rules(rules: HashMap<String, Rule>) -> Result<HashMap<PathBuf, En
     Ok(files)
 }
 
-fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
+fn prepare_rule(name: String, rule: Rule) -> Result<(Entry, State)> {
     let matchers = rule
         .filters
         .iter()
@@ -246,16 +211,17 @@ fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
     let file = File::open(&rule.file)?;
     let buf = BufReader::new(file);
     let lines = Some(buf.lines());
-    let time = Utc.fix().timestamp(0, 0);
+    let time = Utc.timestamp(0, 0);
 
-    Ok(Entry {
-        name,
-        lines,
-        matchers,
-        blacklists,
-        time,
-        rule,
-    })
+    Ok((
+        Entry {
+            name,
+            matchers,
+            blacklists,
+            rule,
+        },
+        State { lines, time },
+    ))
 }
 
 #[cfg(test)]

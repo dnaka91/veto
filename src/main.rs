@@ -20,6 +20,7 @@ use crate::storage::TargetRepository;
 
 mod firewall;
 mod handler;
+mod matcher;
 mod notifier;
 mod settings;
 mod storage;
@@ -90,7 +91,7 @@ fn main() -> Result<()> {
     firewall.install()?;
 
     storage.iter_active(|addr, file| {
-        if let Some(entry) = files.get(file) {
+        if let Some((entry, _)) = files.get(file) {
             let target = &firewall::Target {
                 ip: addr,
                 ports: &entry.rule.ports,
@@ -110,8 +111,8 @@ fn main() -> Result<()> {
         last_unblock,
     };
 
-    for entry in files.values_mut() {
-        handler.handle_modified(entry)?;
+    for (entry, state) in files.values_mut() {
+        handler.handle_modified(entry, state)?;
     }
 
     let events = notifier::start(files.keys())?;
