@@ -1,3 +1,5 @@
+#![allow(clippy::inline_always, clippy::option_if_let_else)]
+
 use std::net::IpAddr;
 
 use aho_corasick::AhoCorasick;
@@ -16,9 +18,22 @@ pub struct Matcher {
     now: DateTime<Utc>,
 }
 
-impl Matcher {
-    pub fn new() -> Self {
+impl Default for Matcher {
+    fn default() -> Self {
         Self { now: Utc::now() }
+    }
+}
+
+impl Matcher {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    // Only used for benchmarks, don't use directly.
+    #[must_use]
+    pub const fn with(now: DateTime<Utc>) -> Self {
+        Self { now }
     }
 
     pub fn find(&self, entry: &Entry, last_time: &mut DateTime<Utc>, line: &str) -> Option<IpAddr> {
@@ -40,7 +55,10 @@ impl Matcher {
                     None => continue,
                 };
 
-                if Self::match_blacklists(&caps, &entry.blacklists).is_some() {
+                if Self::match_blacklists(&caps, &entry.blacklists)
+                    .next()
+                    .is_some()
+                {
                     return Some(host);
                 }
             }
@@ -49,10 +67,12 @@ impl Matcher {
         None
     }
 
+    #[inline(always)]
     fn is_outdated(&self, rule: &Rule, last_time: DateTime<Utc>, time: DateTime<Utc>) -> bool {
         time < last_time || self.now - time > rule.timeout
     }
 
+    #[inline(always)]
     fn match_time(caps: &Captures<'_>) -> Option<DateTime<Utc>> {
         caps.name(TIME_GROUP).and_then(|time| {
             DateTime::parse_from_str(time.as_str(), TIME_FORMAT)
@@ -61,28 +81,23 @@ impl Matcher {
         })
     }
 
+    #[inline(always)]
     fn match_host(caps: &Captures<'_>) -> Option<IpAddr> {
         caps.name(HOST_GROUP)
             .and_then(|host| host.as_str().parse().ok())
     }
 
-    fn match_blacklists(
-        caps: &Captures<'_>,
-        blacklists: &HashMap<String, AhoCorasick>,
-    ) -> Option<usize> {
-        if blacklists.is_empty() {
-            return None;
-        }
-
-        for (name, blacklist) in blacklists {
+    #[inline(always)]
+    fn match_blacklists<'a>(
+        caps: &'a Captures<'a>,
+        blacklists: &'a HashMap<String, AhoCorasick>,
+    ) -> impl Iterator<Item = usize> + 'a {
+        blacklists.iter().filter_map(move |(name, blacklist)| {
             if let Some(value) = caps.name(name) {
-                let res = blacklist.find(value.as_str());
-                if res.is_some() {
-                    return res.map(|m| m.pattern());
-                }
+                blacklist.find(value.as_str()).map(|m| m.pattern())
+            } else {
+                None
             }
-        }
-
-        None
+        })
     }
 }

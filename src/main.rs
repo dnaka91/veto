@@ -1,12 +1,10 @@
 #![deny(unsafe_code, rust_2018_idioms, clippy::all, clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![allow(clippy::doc_markdown, clippy::module_name_repetitions)]
 
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration as StdDuration;
 
-use ahash::RandomState;
 use anyhow::Result;
 use chrono::prelude::*;
 use chrono::Duration;
@@ -14,19 +12,13 @@ use clap::{AppSettings, Clap};
 use crossbeam_channel::Receiver;
 use log::{info, warn};
 
-use crate::firewall::Firewall;
-use crate::handler::Handler;
-use crate::storage::TargetRepository;
-
-mod firewall;
-mod handler;
-mod matcher;
-mod notifier;
-mod settings;
-mod storage;
-
-type HashMap<K, V> = std::collections::HashMap<K, V, RandomState>;
-type HashSet<T> = std::collections::HashSet<T, RandomState>;
+use veto::firewall::{self, Firewall};
+use veto::handler;
+use veto::handler::Handler;
+use veto::notifier;
+use veto::settings;
+use veto::storage;
+use veto::storage::TargetRepository;
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Clap)]

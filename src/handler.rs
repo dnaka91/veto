@@ -1,10 +1,10 @@
 use std::fs::File;
+use std::hash::BuildHasher;
 use std::io::prelude::*;
 use std::io::{BufReader, Lines};
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use ahash::RandomState;
 use aho_corasick::AhoCorasick;
 use aho_corasick::AhoCorasickBuilder;
 use anyhow::Result;
@@ -170,19 +170,32 @@ where
     }
 }
 
-pub fn prepare_rules(rules: HashMap<String, Rule>) -> Result<HashMap<PathBuf, (Entry, State)>> {
-    let mut files = HashMap::with_hasher(RandomState::new());
+pub fn prepare_rules<S>(
+    rules: HashMap<String, Rule, S>,
+) -> Result<HashMap<PathBuf, (Entry, State), S>>
+where
+    S: BuildHasher + Default,
+{
+    let mut files = HashMap::with_hasher(S::default());
 
     for (name, mut rule) in rules {
         rule.file = rule.file.canonicalize()?;
 
-        files.insert(rule.file.clone(), prepare_rule(name, rule)?);
+        let file = File::open(&rule.file)?;
+        let buf = BufReader::new(file);
+        let lines = Some(buf.lines());
+        let time = Utc.timestamp(0, 0);
+
+        files.insert(
+            rule.file.clone(),
+            (prepare_rule(name, rule)?, State { lines, time }),
+        );
     }
 
     Ok(files)
 }
 
-fn prepare_rule(name: String, rule: Rule) -> Result<(Entry, State)> {
+pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
     let matchers = rule
         .filters
         .iter()
@@ -208,20 +221,12 @@ fn prepare_rule(name: String, rule: Rule) -> Result<(Entry, State)> {
         })
         .collect::<HashMap<_, _>>();
 
-    let file = File::open(&rule.file)?;
-    let buf = BufReader::new(file);
-    let lines = Some(buf.lines());
-    let time = Utc.timestamp(0, 0);
-
-    Ok((
-        Entry {
-            name,
-            matchers,
-            blacklists,
-            rule,
-        },
-        State { lines, time },
-    ))
+    Ok(Entry {
+        name,
+        matchers,
+        blacklists,
+        rule,
+    })
 }
 
 #[cfg(test)]

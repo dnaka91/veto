@@ -22,7 +22,7 @@ pub struct Settings {
 }
 
 /// A rule describes the file to track with filters and blacklists to detect malicious accesses.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Rule {
     /// The file to track for changes and scan for access logs.
     pub file: PathBuf,

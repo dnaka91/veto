@@ -1,0 +1,1 @@
+118.25.122.245 - - [04/Oct/2020:05:20:17 +0000] "GET /TP/public/index.php HTTP/1.1" 301 17 "-" "Mozilla/5.0 (Windows; U; Windows NT 6.0;en-US; rv:1.9.2) Gecko/20100115 Firefox/3.6)" 616 0ms
