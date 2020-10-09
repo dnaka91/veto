@@ -102,9 +102,5 @@ pub fn new_storage(path: Option<PathBuf>) -> Result<impl TargetRepository> {
 }
 
 fn get_location(path: Option<PathBuf>) -> Result<PathBuf> {
-    Ok(if let Some(path) = path {
-        path
-    } else {
-        PathBuf::from("/var/lib/veto/storage.bin")
-    })
+    Ok(path.unwrap_or_else(|| PathBuf::from("/var/lib/veto/storage.bin")))
 }

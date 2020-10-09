@@ -46,11 +46,7 @@ pub struct Rule {
 
 /// Load the application settings from the given path or the OS-specific default location otherwise.
 pub fn load(path: Option<PathBuf>) -> Result<Settings> {
-    let path = if let Some(path) = path {
-        path
-    } else {
-        PathBuf::from("/etc/veto/config.toml")
-    };
+    let path = path.unwrap_or_else(|| PathBuf::from("/etc/veto/config.toml"));
 
     info!("Attempting to load settings from {:?}", path);
 
