@@ -5,7 +5,7 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Duration as StdDuration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use chrono::Duration;
 use clap::{AppSettings, Clap};
@@ -15,6 +15,7 @@ use log::{info, warn};
 use veto::firewall::{self, Firewall};
 use veto::handler;
 use veto::handler::Handler;
+use veto::matcher::Matcher;
 use veto::notifier;
 use veto::settings;
 use veto::storage;
@@ -22,7 +23,7 @@ use veto::storage::TargetRepository;
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Clap)]
-#[clap(about, author, setting = AppSettings::ColoredHelp)]
+#[clap(about, author, global_setting = AppSettings::ColoredHelp)]
 struct Opts {
     /// Level of verbosity.
     ///
@@ -45,12 +46,20 @@ struct Opts {
 enum Command {
     /// Remove any leftover firewall rules.
     Uninstall,
+    /// Match against a single log line and show statistics.
+    Analyze {
+        /// One of the configured rules to load.
+        #[clap(long, short)]
+        rule: String,
+        /// The log line to match against.
+        line: String,
+    },
 }
 
 fn main() -> Result<()> {
     dotenv::dotenv().ok();
 
-    let opts = Opts::parse();
+    let opts: Opts = Opts::parse();
 
     env::set_var(
         "RUST_LOG",
@@ -63,8 +72,11 @@ fn main() -> Result<()> {
     );
     pretty_env_logger::init();
 
-    if let Some(Command::Uninstall) = opts.cmd {
-        firewall::IpSet::new()?.uninstall()?;
+    if let Some(cmd) = opts.cmd {
+        match cmd {
+            Command::Uninstall => uninstall()?,
+            Command::Analyze { rule, line } => analyze(opts.config, &rule, &line)?,
+        }
         return Ok(());
     }
 
@@ -137,4 +149,72 @@ fn create_shutdown() -> Result<Receiver<()>> {
     })?;
 
     Ok(rx)
+}
+
+fn uninstall() -> Result<()> {
+    firewall::IpSet::new()?.uninstall()
+}
+
+fn analyze(config: Option<PathBuf>, rule: &str, line: &str) -> Result<()> {
+    let mut settings = settings::load(config)?;
+    let entry = handler::prepare_rule(
+        rule.to_owned(),
+        settings.rules.remove(rule).context("rule doesn't exist")?,
+    )?;
+    let matcher = Matcher::new();
+
+    let analysis = matcher.find_analyze(&entry, line);
+
+    for (filter, matched) in analysis.matches {
+        println!("Filter: {}", filter);
+        if let Some(matched) = matched {
+            println!("  Captures:");
+            let name_len = matched
+                .captures
+                .iter()
+                .map(|c| c.0.len())
+                .max()
+                .unwrap_or_default();
+
+            for (name, value) in matched.captures {
+                println!("    {:2$}: {}", name, value.unwrap_or_default(), name_len);
+            }
+
+            println!(
+                "  Time: {}",
+                match matched.time {
+                    Some((time, outdated)) =>
+                        format!("{} {}", time, if outdated { "(outdated)" } else { "" }),
+                    None => "no timetamp found".to_owned(),
+                }
+            );
+
+            println!(
+                "  Host: {}",
+                match matched.host {
+                    Some(host) => match host {
+                        std::net::IpAddr::V4(addr) => format!("IPv4 {}", addr),
+                        std::net::IpAddr::V6(addr) => format!("IPv6 {}", addr),
+                    },
+                    None => "no host found".to_owned(),
+                }
+            );
+
+            let name_len = matched
+                .blacklists
+                .iter()
+                .map(|b| b.0.len())
+                .max()
+                .unwrap_or_default();
+
+            println!("  Blacklists:");
+            for (name, pattern) in matched.blacklists {
+                println!("    {:2$}: {}", name, pattern, name_len);
+            }
+        } else {
+            println!("  No match");
+        }
+    }
+
+    Ok(())
 }

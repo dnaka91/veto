@@ -18,12 +18,12 @@ use crate::matcher::Matcher;
 use crate::notifier::{Event, EventType};
 use crate::settings::Rule;
 use crate::storage::TargetRepository;
-use crate::HashMap;
+use crate::{HashMap, IndexMap};
 
 pub struct Entry {
     pub name: String,
     pub matchers: Vec<Regex>,
-    pub blacklists: HashMap<String, AhoCorasick>,
+    pub blacklists: IndexMap<String, AhoCorasick>,
     pub rule: Rule,
 }
 
@@ -205,7 +205,7 @@ pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
                 .fold(f.clone(), |f, (k, r)| f.replace(k, r));
             Regex::new(&f).map_err(Into::into)
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<_>>()?;
 
     let blacklists = rule
         .blacklists
@@ -219,7 +219,7 @@ pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
                     .build(v),
             )
         })
-        .collect::<HashMap<_, _>>();
+        .collect();
 
     Ok(Entry {
         name,

@@ -8,7 +8,7 @@ use regex::Captures;
 
 use crate::handler::Entry;
 use crate::settings::Rule;
-use crate::HashMap;
+use crate::IndexMap;
 
 const HOST_GROUP: &str = "host";
 const TIME_GROUP: &str = "time";
@@ -22,6 +22,19 @@ impl Default for Matcher {
     fn default() -> Self {
         Self { now: Utc::now() }
     }
+}
+
+#[derive(Debug, Default)]
+pub struct Analysis {
+    pub matches: IndexMap<String, Option<Match>>,
+}
+
+#[derive(Debug)]
+pub struct Match {
+    pub time: Option<(DateTime<Utc>, bool)>,
+    pub host: Option<IpAddr>,
+    pub captures: IndexMap<String, Option<String>>,
+    pub blacklists: IndexMap<String, String>,
 }
 
 impl Matcher {
@@ -67,6 +80,52 @@ impl Matcher {
         None
     }
 
+    #[must_use]
+    pub fn find_analyze(&self, entry: &Entry, line: &str) -> Analysis {
+        let mut analysis = Analysis::default();
+
+        for (i, matcher) in entry.matchers.iter().enumerate() {
+            let matcher_name = entry.rule.filters[i].clone();
+
+            if let Some(caps) = matcher.captures(line) {
+                let time = match Self::match_time(&caps) {
+                    Some(time) => Some((
+                        time,
+                        self.is_outdated(&entry.rule, Utc.timestamp(0, 0), time),
+                    )),
+                    None => None,
+                };
+
+                let host = Self::match_host(&caps);
+
+                let blacklists = Self::match_blacklists(&caps, &entry.blacklists)
+                    .map(|(bl, p)| (bl.to_owned(), entry.rule.blacklists[bl][p].clone()))
+                    .collect();
+
+                analysis.matches.insert(
+                    matcher_name,
+                    Some(Match {
+                        time,
+                        host,
+                        captures: matcher
+                            .capture_names()
+                            .filter_map(|name| {
+                                name.map(|n| {
+                                    (n.to_owned(), caps.name(n).map(|m| m.as_str().to_owned()))
+                                })
+                            })
+                            .collect(),
+                        blacklists,
+                    }),
+                );
+            } else {
+                analysis.matches.insert(matcher_name, None);
+            }
+        }
+
+        analysis
+    }
+
     #[inline(always)]
     fn is_outdated(&self, rule: &Rule, last_time: DateTime<Utc>, time: DateTime<Utc>) -> bool {
         time < last_time || self.now - time > rule.timeout
@@ -90,11 +149,13 @@ impl Matcher {
     #[inline(always)]
     fn match_blacklists<'a>(
         caps: &'a Captures<'a>,
-        blacklists: &'a HashMap<String, AhoCorasick>,
-    ) -> impl Iterator<Item = usize> + 'a {
+        blacklists: &'a IndexMap<String, AhoCorasick>,
+    ) -> impl Iterator<Item = (&'a str, usize)> + 'a {
         blacklists.iter().filter_map(move |(name, blacklist)| {
             if let Some(value) = caps.name(name) {
-                blacklist.find(value.as_str()).map(|m| m.pattern())
+                blacklist
+                    .find(value.as_str())
+                    .map(|m| (name.as_str(), m.pattern()))
             } else {
                 None
             }

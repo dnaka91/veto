@@ -9,7 +9,7 @@ use log::info;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 
-use crate::{HashMap, HashSet};
+use crate::{HashMap, IndexMap, IndexSet};
 
 /// Structure holding all application settings.
 #[derive(Debug, Deserialize)]
@@ -41,7 +41,7 @@ pub struct Rule {
     ///
     /// If no blacklists are defined, then the filter match is enough to block a IP.
     #[serde(default)]
-    pub blacklists: HashMap<String, HashSet<String>>,
+    pub blacklists: IndexMap<String, IndexSet<String>>,
 }
 
 /// Load the application settings from the given path or the OS-specific default location otherwise.

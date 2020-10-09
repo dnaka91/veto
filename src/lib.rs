@@ -2,8 +2,6 @@
 #![warn(clippy::nursery)]
 #![allow(clippy::missing_errors_doc, clippy::module_name_repetitions)]
 
-use ahash::RandomState;
-
 pub mod firewall;
 pub mod handler;
 pub mod matcher;
@@ -11,5 +9,6 @@ pub mod notifier;
 pub mod settings;
 pub mod storage;
 
-type HashMap<K, V, S = RandomState> = std::collections::HashMap<K, V, S>;
-type HashSet<T, S = RandomState> = std::collections::HashSet<T, S>;
+type HashMap<K, V, S = ahash::RandomState> = std::collections::HashMap<K, V, S>;
+type IndexMap<K, V, S = ahash::RandomState> = indexmap::IndexMap<K, V, S>;
+type IndexSet<T, S = ahash::RandomState> = indexmap::IndexSet<T, S>;
