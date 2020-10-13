@@ -216,7 +216,7 @@ fn is_expected_error(message: &str, ty: RunType) -> bool {
 
     if let (Some(prefix), Some(msg)) = (parts.next(), parts.next()) {
         return prefix.starts_with("ipset v")
-            && msg
+            && msg.trim()
                 == match ty {
                     RunType::Add => "Element cannot be added to the set: it's already added",
                     RunType::Delete => "Element cannot be deleted from the set: it's not added",
