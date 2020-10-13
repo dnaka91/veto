@@ -1,4 +1,5 @@
-#![deny(unsafe_code, rust_2018_idioms, clippy::all, clippy::pedantic)]
+#![forbid(unsafe_code)]
+#![deny(rust_2018_idioms, clippy::all, clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![allow(clippy::missing_errors_doc, clippy::module_name_repetitions)]
 

@@ -1,4 +1,5 @@
-#![deny(unsafe_code, rust_2018_idioms, clippy::all, clippy::pedantic)]
+#![forbid(unsafe_code)]
+#![deny(rust_2018_idioms, clippy::all, clippy::pedantic)]
 #![warn(clippy::nursery)]
 
 use std::env;
@@ -9,7 +10,7 @@ use anyhow::{Context, Result};
 use chrono::prelude::*;
 use chrono::Duration;
 use clap::{AppSettings, Clap};
-use crossbeam_channel::Receiver;
+use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
 
 use veto::firewall::{self, Firewall};
@@ -124,7 +125,7 @@ fn main() -> Result<()> {
 
     #[allow(clippy::useless_transmute)]
     loop {
-        crossbeam_channel::select! {
+        select! {
             recv(shutdown) -> _ => {
                 info!("shutting down");
                 break;
