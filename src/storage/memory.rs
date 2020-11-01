@@ -38,7 +38,7 @@ where
     pub fn new(path: Option<PathBuf>) -> Result<Self> {
         let location = super::get_location(path)?;
         let map = Arc::new(RwLock::new(if let Ok(f) = File::open(&location) {
-            bincode::deserialize_from(GzDecoder::new(BufReader::new(f)))?
+            bincode::deserialize_from(GzDecoder::new(BufReader::new(f))).unwrap_or_default()
         } else {
             HashMap::with_hasher(RandomState::new())
         }));
@@ -78,10 +78,11 @@ where
         f(&self.map.read())
     }
 
-    pub fn get_mut(&self, mut f: impl FnMut(&mut HashMap<K, V>) -> bool) {
-        if f(&mut self.map.write()) {
+    pub fn get_mut(&self, mut f: impl FnMut(&mut HashMap<K, V>) -> Result<bool>) -> Result<()> {
+        if f(&mut self.map.write())? {
             self.dirty.store(true, Ordering::Relaxed);
         }
+        Ok(())
     }
 }
 

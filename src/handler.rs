@@ -148,7 +148,7 @@ where
                 let (entry, _) = if let Some(e) = files.get(path) {
                     e
                 } else {
-                    return Ok(());
+                    return Ok(false);
                 };
 
                 info!("rule {}: unblocking {}", entry.name, addr);
@@ -160,7 +160,7 @@ where
                 if let Err(e) = self.firewall.unblock(target) {
                     warn!("failed unblocking {}: {}", addr, e);
                 }
-                Ok(())
+                Ok(true)
             })?;
 
             self.last_unblock = now;
