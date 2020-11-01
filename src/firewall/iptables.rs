@@ -52,9 +52,7 @@ impl Firewall for IpTables {
         let cmds = &[
             vec!["-N", self.name],
             vec!["-A", self.name, "-j", "ACCEPT"],
-            vec![
-                "-I", "INPUT", "-m", "state", "--state", "NEW", "-p", "tcp", "-j", self.name,
-            ],
+            vec!["-I", "INPUT", "-p", "tcp", "-j", self.name],
         ];
 
         for args in cmds {
@@ -90,9 +88,7 @@ impl Firewall for IpTables {
 
     fn uninstall(&self) -> Result<()> {
         let cmds = &[
-            vec![
-                "-D", "INPUT", "-m", "state", "--state", "NEW", "-p", "tcp", "-j", self.name,
-            ],
+            vec!["-D", "INPUT", "-p", "tcp", "-j", self.name],
             vec!["-F", self.name],
             vec!["-X", self.name],
         ];

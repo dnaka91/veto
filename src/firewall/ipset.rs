@@ -71,7 +71,7 @@ impl Firewall for IpSet {
         let output = String::from_utf8(output.stdout)?;
 
         let rule = format!(
-            "-A INPUT -p tcp -m state --state NEW -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
+            "-A INPUT -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
             &self.name
         );
 
@@ -82,10 +82,6 @@ impl Firewall for IpSet {
                     "INPUT",
                     "-p",
                     "tcp",
-                    "-m",
-                    "state",
-                    "--state",
-                    "NEW",
                     "-m",
                     "multiport",
                     "--dports",
@@ -118,10 +114,6 @@ impl Firewall for IpSet {
                     "INPUT",
                     "-p",
                     "tcp",
-                    "-m",
-                    "state",
-                    "--state",
-                    "NEW",
                     "-m",
                     "multiport",
                     "--dports",
