@@ -7,6 +7,8 @@ use log::warn;
 
 use super::{find_binary, Firewall, Target};
 
+const DEFAULT_CHAINS: &[&str] = &["INPUT", "FORWARD"];
+
 pub struct IpSet {
     name: &'static str,
     ipset_path: PathBuf,
@@ -70,71 +72,75 @@ impl Firewall for IpSet {
 
         let output = String::from_utf8(output.stdout)?;
 
-        let rule = format!(
-            "-A INPUT -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
-            &self.name
-        );
-
-        if !output.lines().any(|l| l == rule) {
-            let output = Command::new(&self.iptables_path)
-                .args(&[
-                    "-I",
-                    "INPUT",
-                    "-p",
-                    "tcp",
-                    "-m",
-                    "multiport",
-                    "--dports",
-                    "80,443",
-                    "-m",
-                    "set",
-                    "--match-set",
-                    self.name,
-                    "src",
-                    "-j",
-                    "DROP",
-                ])
-                .output()?;
-
-            ensure!(
-                output.status.success(),
-                "failed adding iptables rule: {}",
-                String::from_utf8_lossy(&output.stderr)
+        for chain in DEFAULT_CHAINS {
+            let rule = format!(
+                "-A {} -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
+                chain, &self.name
             );
+
+            if !output.lines().any(|l| l == rule) {
+                let output = Command::new(&self.iptables_path)
+                    .args(&[
+                        "-I",
+                        chain,
+                        "-p",
+                        "tcp",
+                        "-m",
+                        "multiport",
+                        "--dports",
+                        "80,443",
+                        "-m",
+                        "set",
+                        "--match-set",
+                        self.name,
+                        "src",
+                        "-j",
+                        "DROP",
+                    ])
+                    .output()?;
+
+                ensure!(
+                    output.status.success(),
+                    "failed adding iptables rule: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
         }
 
         Ok(())
     }
 
     fn uninstall(&self) -> Result<()> {
-        loop {
-            let output = Command::new(&self.iptables_path)
-                .args(&[
-                    "-D",
-                    "INPUT",
-                    "-p",
-                    "tcp",
-                    "-m",
-                    "multiport",
-                    "--dports",
-                    "80,443",
-                    "-m",
-                    "set",
-                    "--match-set",
-                    self.name,
-                    "src",
-                    "-j",
-                    "DROP",
-                ])
-                .output()
-                .context("failed running iptables")?;
+        for chain in DEFAULT_CHAINS {
+            loop {
+                let output = Command::new(&self.iptables_path)
+                    .args(&[
+                        "-D",
+                        chain,
+                        "-p",
+                        "tcp",
+                        "-m",
+                        "multiport",
+                        "--dports",
+                        "80,443",
+                        "-m",
+                        "set",
+                        "--match-set",
+                        self.name,
+                        "src",
+                        "-j",
+                        "DROP",
+                    ])
+                    .output()
+                    .context("failed running iptables")?;
 
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.starts_with("iptables: Bad rule ") {
-                    warn!("failed deleting iptables rule: {}", stderr);
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    if !stderr.starts_with("iptables: Bad rule ") {
+                        warn!("failed deleting iptables rule: {}", stderr);
+                    }
+                    break;
                 }
-                break;
             }
         }
 
