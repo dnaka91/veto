@@ -1,7 +1,8 @@
+use std::fs;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 
 pub use ipset::IpSet;
 pub use iptables::IpTables;
@@ -31,11 +32,22 @@ pub trait Firewall {
 }
 
 #[cfg(target_os = "linux")]
-fn find_binary(name: &str) -> Result<PathBuf> {
-    which::which(name).map_err(Into::into)
+fn find_binary(name: &str, default: &str) -> Result<PathBuf> {
+    use std::os::unix::fs::MetadataExt;
+
+    if let Ok(path) = which::which(name) {
+        return Ok(path);
+    }
+
+    let meta = fs::metadata(default)
+        .map(|meta| meta.is_file() && meta.mode() & 0o111 != 0)
+        .unwrap_or_default();
+    ensure!(meta, "cannot find binary path of '{}'", name);
+
+    Ok(PathBuf::from(default))
 }
 
 #[cfg(not(target_os = "linux"))]
-fn find_binary(name: &str) -> Result<PathBuf> {
-    Ok(PathBuf::from(name))
+fn find_binary(_name: &str, default: &str) -> Result<PathBuf> {
+    Ok(PathBuf::from(default))
 }

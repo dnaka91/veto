@@ -25,8 +25,8 @@ impl IpSet {
 
         Ok(Self {
             name: env!("CARGO_PKG_NAME"),
-            ipset_path: find_binary("ipset")?,
-            iptables_path: find_binary("iptables")?,
+            ipset_path: find_binary("ipset", "/usr/sbin/ipset")?,
+            iptables_path: find_binary("iptables", "/usr/sbin/iptables")?,
         })
     }
 }

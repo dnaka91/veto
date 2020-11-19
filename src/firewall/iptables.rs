@@ -19,8 +19,8 @@ impl IpTables {
     pub fn new() -> Result<Self> {
         Ok(Self {
             name: env!("CARGO_PKG_NAME"),
-            iptables_path: find_binary("iptables")?,
-            ip6tables_path: find_binary("ip6tables")?,
+            iptables_path: find_binary("iptables", "/usr/sbin/iptables")?,
+            ip6tables_path: find_binary("ip6tables", "/usr/sbin/ip6tables")?,
         })
     }
 
