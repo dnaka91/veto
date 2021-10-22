@@ -35,8 +35,8 @@ where
     K: Eq + Hash + Serialize + DeserializeOwned + Send + Sync + 'static,
     V: Serialize + DeserializeOwned + Send + Sync + 'static,
 {
-    pub fn new(path: Option<PathBuf>) -> Result<Self> {
-        let location = super::get_location(path)?;
+    pub fn new(path: Option<PathBuf>) -> Self {
+        let location = super::get_location(path);
         let map = Arc::new(RwLock::new(if let Ok(f) = File::open(&location) {
             bincode::deserialize_from(GzDecoder::new(BufReader::new(f))).unwrap_or_default()
         } else {
@@ -66,12 +66,12 @@ where
             }
         });
 
-        Ok(Self {
+        Self {
             map,
             dirty,
             handle: Some(handle),
             stop: stop_tx,
-        })
+        }
     }
 
     pub fn get(&self, f: impl Fn(&HashMap<K, V>) -> Result<()>) -> Result<()> {

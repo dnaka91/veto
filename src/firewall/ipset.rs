@@ -6,6 +6,7 @@ use anyhow::{ensure, Context, Result};
 use log::warn;
 
 use super::{find_binary, Firewall, Target};
+use crate::settings::IpSet as Settings;
 
 const DEFAULT_CHAINS: &[&str] = &["INPUT", "FORWARD"];
 
@@ -13,10 +14,11 @@ pub struct IpSet {
     name: &'static str,
     ipset_path: PathBuf,
     iptables_path: PathBuf,
+    settings: Settings,
 }
 
 impl IpSet {
-    pub fn new() -> Result<Self> {
+    pub fn new(settings: Settings) -> Result<Self> {
         if cfg!(not(target_os = "linux")) {
             warn!("The ipset firewall is only supported on Linux systems");
             warn!("Instead you will see commands that would be run instead");
@@ -27,6 +29,7 @@ impl IpSet {
             name: env!("CARGO_PKG_NAME"),
             ipset_path: find_binary("ipset", "/usr/sbin/ipset")?,
             iptables_path: find_binary("iptables", "/usr/sbin/iptables")?,
+            settings,
         })
     }
 }
@@ -74,8 +77,8 @@ impl Firewall for IpSet {
 
         for chain in DEFAULT_CHAINS {
             let rule = format!(
-                "-A {} -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j DROP",
-                chain, &self.name
+                "-A {} -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j {}",
+                chain, &self.name, self.settings.target
             );
 
             if !output.lines().any(|l| l == rule) {
@@ -95,8 +98,8 @@ impl Firewall for IpSet {
                         self.name,
                         "src",
                         "-j",
-                        "DROP",
                     ])
+                    .args(self.settings.target.to_args())
                     .output()?;
 
                 ensure!(
@@ -129,14 +132,16 @@ impl Firewall for IpSet {
                         self.name,
                         "src",
                         "-j",
-                        "DROP",
                     ])
+                    .args(self.settings.target.to_args())
                     .output()
                     .context("failed running iptables")?;
 
                 if !output.status.success() {
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    if !stderr.starts_with("iptables: Bad rule ") {
+                    if !stderr.starts_with("iptables: Bad rule ")
+                        && !stderr.starts_with("iptables: No chain/target/match by that name.")
+                    {
                         warn!("failed deleting iptables rule: {}", stderr);
                     }
                     break;

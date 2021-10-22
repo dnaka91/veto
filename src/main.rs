@@ -9,7 +9,7 @@ use std::time::Duration as StdDuration;
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use chrono::Duration;
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
 
@@ -23,8 +23,8 @@ use veto::storage;
 use veto::storage::TargetRepository;
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
-#[derive(Clap)]
-#[clap(about, author, global_setting = AppSettings::ColoredHelp)]
+#[derive(Parser)]
+#[clap(about, author)]
 struct Opts {
     /// Level of verbosity.
     ///
@@ -43,7 +43,7 @@ struct Opts {
     cmd: Option<Command>,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum Command {
     /// Remove any leftover firewall rules.
     Uninstall,
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
 
     if let Some(cmd) = opts.cmd {
         match cmd {
-            Command::Uninstall => uninstall()?,
+            Command::Uninstall => uninstall(opts.config)?,
             Command::Analyze { rule, line } => analyze(opts.config, &rule, &line)?,
         }
         return Ok(());
@@ -85,9 +85,9 @@ fn main() -> Result<()> {
 
     let shutdown = create_shutdown()?;
 
-    let firewall = firewall::IpSet::new()?;
+    let firewall = firewall::IpSet::new(settings.ipset)?;
 
-    let storage = storage::new_storage(opts.storage)?;
+    let storage = storage::new_storage(opts.storage);
 
     let mut files = handler::prepare_rules(settings.rules)?;
 
@@ -102,7 +102,7 @@ fn main() -> Result<()> {
                 ports: &entry.rule.ports,
             };
             if let Err(e) = firewall.block(target) {
-                warn!("failed blocking {}: {:?}", addr, e)
+                warn!("failed blocking {}: {:?}", addr, e);
             }
         }
 
@@ -152,8 +152,9 @@ fn create_shutdown() -> Result<Receiver<()>> {
     Ok(rx)
 }
 
-fn uninstall() -> Result<()> {
-    firewall::IpSet::new()?.uninstall()
+fn uninstall(config: Option<PathBuf>) -> Result<()> {
+    let settings = settings::load(config)?;
+    firewall::IpSet::new(settings.ipset)?.uninstall()
 }
 
 fn analyze(config: Option<PathBuf>, rule: &str, line: &str) -> Result<()> {

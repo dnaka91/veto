@@ -88,13 +88,12 @@ impl Matcher {
             let matcher_name = entry.rule.filters[i].clone();
 
             if let Some(caps) = matcher.captures(line) {
-                let time = match Self::match_time(&caps) {
-                    Some(time) => Some((
+                let time = Self::match_time(&caps).map(|time| {
+                    (
                         time,
                         self.is_outdated(&entry.rule, Utc.timestamp(0, 0), time),
-                    )),
-                    None => None,
-                };
+                    )
+                });
 
                 let host = Self::match_host(&caps);
 

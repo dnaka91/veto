@@ -124,11 +124,12 @@ impl TargetRepository for HashMapStorage {
 }
 
 /// Create a new [`TargetRepository`] with the default implementation.
-pub fn new_storage(path: Option<PathBuf>) -> Result<impl TargetRepository> {
-    Ok(HashMapStorage(MemoryDatabase::new(path)?))
+#[must_use]
+pub fn new_storage(path: Option<PathBuf>) -> impl TargetRepository {
+    HashMapStorage(MemoryDatabase::new(path))
 }
 
 /// Determine the location of a file for persistence.
-fn get_location(path: Option<PathBuf>) -> Result<PathBuf> {
-    Ok(path.unwrap_or_else(|| PathBuf::from("/var/lib/veto/storage.bin")))
+fn get_location(path: Option<PathBuf>) -> PathBuf {
+    path.unwrap_or_else(|| PathBuf::from("/var/lib/veto/storage.bin"))
 }

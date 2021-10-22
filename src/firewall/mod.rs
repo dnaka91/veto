@@ -1,8 +1,7 @@
-use std::fs;
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use anyhow::{ensure, Result};
+use anyhow::Result;
 
 pub use ipset::IpSet;
 pub use iptables::IpTables;
@@ -47,6 +46,7 @@ fn find_binary(name: &str, default: &str) -> Result<PathBuf> {
     Ok(PathBuf::from(default))
 }
 
+#[allow(clippy::unnecessary_wraps)]
 #[cfg(not(target_os = "linux"))]
 fn find_binary(_name: &str, default: &str) -> Result<PathBuf> {
     Ok(PathBuf::from(default))

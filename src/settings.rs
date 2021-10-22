@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 use std::fs;
 use std::path::PathBuf;
 
@@ -17,8 +17,60 @@ pub struct Settings {
     /// List of IP network masks to ignore.
     #[serde(default)]
     pub whitelist: Vec<IpNetwork>,
+    /// Settings for the ipset firewall.
+    #[serde(default)]
+    pub ipset: IpSet,
     /// List of rules to apply.
     pub rules: HashMap<String, Rule>,
+}
+
+/// Structure holding settings specific to the ipset firewall.
+#[derive(Debug, Default, Deserialize)]
+pub struct IpSet {
+    /// Target to send matched IPs to in **iptables**.
+    pub target: IptablesTarget,
+}
+
+/// Different targets that a matched IP can be send to in iptables.
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub enum IptablesTarget {
+    /// Drop the packets, making the server look as it would not exist.
+    Drop,
+    /// Explicitly reject the packets, returning an error to the client.
+    Reject,
+    /// Lock the client into a tarpit, forcing automated bots into a long running connection that
+    /// wastes their time but doesn't take any additional resources on the system.
+    ///
+    /// **Note**: For this target to work, the iptables addons need to be installed on the system
+    /// (`xtables-addons-dkms` package on Debian).
+    Tarpit,
+}
+
+impl IptablesTarget {
+    #[must_use]
+    pub const fn to_args(self) -> &'static [&'static str] {
+        match self {
+            Self::Drop => &["DROP"],
+            Self::Reject => &["REJECT"],
+            Self::Tarpit => &["TARPIT", "--tarpit"],
+        }
+    }
+}
+
+impl Default for IptablesTarget {
+    fn default() -> Self {
+        Self::Drop
+    }
+}
+
+impl Display for IptablesTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Drop => "DROP",
+            Self::Reject => "REJECT",
+            Self::Tarpit => "TARPIT --tarpit",
+        })
+    }
 }
 
 /// A rule describes the file to track with filters and blacklists to detect malicious accesses.

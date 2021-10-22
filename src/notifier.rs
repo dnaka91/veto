@@ -10,7 +10,7 @@ pub fn start<'a>(paths: impl Iterator<Item = &'a PathBuf>) -> Result<Notifier> {
     let (tx, rx) = crossbeam_channel::unbounded();
     let handler = Handler { tx };
 
-    let mut watcher = notify::immediate_watcher(move |res| handler.handle(res))?;
+    let mut watcher = notify::recommended_watcher(move |res| handler.handle(res))?;
 
     for path in paths {
         debug!("Start watching file {:?}", path);
@@ -70,7 +70,7 @@ impl Handler {
                         };
                         ty.map(|ty| Event { path, ty })
                     })
-                    .for_each(|event| self.tx.send(event).unwrap())
+                    .for_each(|event| self.tx.send(event).unwrap());
             }
             Err(e) => warn!("watch error: {:?}", e),
         }

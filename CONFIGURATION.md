@@ -14,6 +14,16 @@ Example:
 whitelist = ["127.0.0.1/32", "192.168.1.0/24"]
 ```
 
+## `ipset`
+
+Settings specific to the `ipset` firewall.
+
+### `target`
+
+- `Drop`
+- `Reject`
+- `Tarpit`
+
 ## `rules.<name>`
 
 Rules are the definitions of a files that should be watched, filters applied on the log entries and
