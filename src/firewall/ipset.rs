@@ -129,7 +129,9 @@ impl IpSet {
                 if !output.status.success() {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     if !stderr.starts_with("iptables: Bad rule ")
+                        && !stderr.starts_with("ip6tables: Bad rule ")
                         && !stderr.starts_with("iptables: No chain/target/match by that name.")
+                        && !stderr.starts_with("ip6tables: No chain/target/match by that name.")
                     {
                         warn!("failed deleting iptables rule: {}", stderr);
                     }
