@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-pub use ipset::IpSet;
-pub use iptables::IpTables;
+pub use self::ipset::IpSet;
+pub use self::iptables::IpTables;
 
 mod ipset;
 mod iptables;
@@ -32,7 +32,10 @@ pub trait Firewall {
 
 #[cfg(target_os = "linux")]
 fn find_binary(name: &str, default: &str) -> Result<PathBuf> {
+    use std::fs;
     use std::os::unix::fs::MetadataExt;
+
+    use anyhow::ensure;
 
     if let Ok(path) = which::which(name) {
         return Ok(path);
