@@ -1,6 +1,6 @@
-use std::net::IpAddr;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{net::IpAddr, path::Path};
 
 use anyhow::{ensure, Context, Result};
 use log::warn;
@@ -12,8 +12,10 @@ const DEFAULT_CHAINS: &[&str] = &["INPUT", "FORWARD"];
 
 pub struct IpSet {
     name: &'static str,
+    name_v6: &'static str,
     ipset_path: PathBuf,
     iptables_path: PathBuf,
+    ip6tables_path: PathBuf,
     settings: Settings,
 }
 
@@ -27,31 +29,18 @@ impl IpSet {
 
         Ok(Self {
             name: env!("CARGO_PKG_NAME"),
+            name_v6: concat!(env!("CARGO_PKG_NAME"), "_v6"),
             ipset_path: find_binary("ipset", "/usr/sbin/ipset")?,
             iptables_path: find_binary("iptables", "/usr/sbin/iptables")?,
+            ip6tables_path: find_binary("ip6tables", "/usr/sbin/ip6tables")?,
             settings,
         })
     }
-}
 
-impl Firewall for IpSet {
-    fn install(&self) -> Result<()> {
-        let output = Command::new(&self.ipset_path)
-            .args(&["list", "-n"])
-            .output()
-            .context("failed running ipset")?;
-
-        ensure!(
-            output.status.success(),
-            "failed listing ipset table names: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-
-        let output = String::from_utf8(output.stdout)?;
-
-        if !output.lines().any(|l| l == self.name) {
+    fn install_for(&self, name: &str, iptables: &Path, family: &str, output: &str) -> Result<()> {
+        if !output.lines().any(|l| l == name) {
             let output = Command::new(&self.ipset_path)
-                .args(&["create", self.name, "hash:ip"])
+                .args(&["create", name, "hash:ip", "family", family])
                 .output()
                 .context("failed running ipset")?;
 
@@ -62,7 +51,7 @@ impl Firewall for IpSet {
             );
         }
 
-        let output = Command::new(&self.iptables_path)
+        let output = Command::new(iptables)
             .arg("-S")
             .output()
             .context("failed running iptables")?;
@@ -78,11 +67,11 @@ impl Firewall for IpSet {
         for chain in DEFAULT_CHAINS {
             let rule = format!(
                 "-A {} -p tcp -m multiport --dports 80,443 -m set --match-set {} src -j {}",
-                chain, &self.name, self.settings.target
+                chain, name, self.settings.target
             );
 
             if !output.lines().any(|l| l == rule) {
-                let output = Command::new(&self.iptables_path)
+                let output = Command::new(iptables)
                     .args(&[
                         "-I",
                         chain,
@@ -95,7 +84,7 @@ impl Firewall for IpSet {
                         "-m",
                         "set",
                         "--match-set",
-                        self.name,
+                        name,
                         "src",
                         "-j",
                     ])
@@ -113,10 +102,10 @@ impl Firewall for IpSet {
         Ok(())
     }
 
-    fn uninstall(&self) -> Result<()> {
+    fn uninstall_for(&self, name: &str, iptables: &Path) -> Result<()> {
         for chain in DEFAULT_CHAINS {
             loop {
-                let output = Command::new(&self.iptables_path)
+                let output = Command::new(iptables)
                     .args(&[
                         "-D",
                         chain,
@@ -129,7 +118,7 @@ impl Firewall for IpSet {
                         "-m",
                         "set",
                         "--match-set",
-                        self.name,
+                        name,
                         "src",
                         "-j",
                     ])
@@ -150,7 +139,7 @@ impl Firewall for IpSet {
         }
 
         let output = Command::new(&self.ipset_path)
-            .args(&["destroy", self.name])
+            .args(&["destroy", name])
             .output()
             .context("failed running ipset")?;
 
@@ -163,48 +152,83 @@ impl Firewall for IpSet {
         Ok(())
     }
 
-    fn block<'a>(&self, target: &Target<'a>) -> Result<()> {
-        if let IpAddr::V4(ip) = target.ip {
-            let output = Command::new(&self.ipset_path)
-                .args(&["add", self.name, &ip.to_string()])
-                .output()
-                .context("failed running ipset")?;
+    fn block_for(&self, name: &str, ip: &str) -> Result<()> {
+        let output = Command::new(&self.ipset_path)
+            .args(&["add", name, ip])
+            .output()
+            .context("failed running ipset")?;
 
-            if !output.status.success() {
-                let message = String::from_utf8_lossy(&output.stderr);
-                ensure!(
-                    is_expected_error(&message, RunType::Add),
-                    "failed adding IP to ipset table: {}",
-                    message
-                );
-            }
-        } else {
-            warn!("ipv6 addresses not supported yet");
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr);
+            ensure!(
+                is_expected_error(&message, RunType::Add),
+                "failed adding IP to ipset table: {}",
+                message
+            );
         }
 
         Ok(())
     }
 
-    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()> {
-        if let IpAddr::V4(ip) = target.ip {
-            let output = Command::new(&self.ipset_path)
-                .args(&["del", self.name, &ip.to_string()])
-                .output()
-                .context("failed running ipset")?;
+    fn unblock_for(&self, name: &str, ip: &str) -> Result<()> {
+        let output = Command::new(&self.ipset_path)
+            .args(&["del", name, ip])
+            .output()
+            .context("failed running ipset")?;
 
-            if !output.status.success() {
-                let message = String::from_utf8_lossy(&output.stderr);
-                ensure!(
-                    is_expected_error(&message, RunType::Delete),
-                    "failed deleting IP from ipset table: {}",
-                    message
-                );
-            }
-        } else {
-            warn!("ipv6 addresses not supported yet");
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr);
+            ensure!(
+                is_expected_error(&message, RunType::Delete),
+                "failed deleting IP from ipset table: {}",
+                message
+            );
         }
 
         Ok(())
+    }
+}
+
+impl Firewall for IpSet {
+    fn install(&self) -> Result<()> {
+        let output = Command::new(&self.ipset_path)
+            .args(&["list", "-n"])
+            .output()
+            .context("failed running ipset")?;
+
+        ensure!(
+            output.status.success(),
+            "failed listing ipset table names: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let output = String::from_utf8(output.stdout)?;
+
+        self.install_for(self.name, &self.iptables_path, "inet", &output)?;
+        self.install_for(self.name_v6, &self.ip6tables_path, "inet6", &output)?;
+
+        Ok(())
+    }
+
+    fn uninstall(&self) -> Result<()> {
+        self.uninstall_for(self.name, &self.iptables_path)?;
+        self.uninstall_for(self.name_v6, &self.ip6tables_path)?;
+
+        Ok(())
+    }
+
+    fn block<'a>(&self, target: &Target<'a>) -> Result<()> {
+        match target.ip {
+            IpAddr::V4(ip) => self.block_for(self.name, &ip.to_string()),
+            IpAddr::V6(ip) => self.block_for(self.name_v6, &ip.to_string()),
+        }
+    }
+
+    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()> {
+        match target.ip {
+            IpAddr::V4(ip) => self.unblock_for(self.name, &ip.to_string()),
+            IpAddr::V6(ip) => self.unblock_for(self.name_v6, &ip.to_string()),
+        }
     }
 }
 

@@ -12,15 +12,11 @@ use chrono::Duration;
 use clap::Parser;
 use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
-
 use veto::firewall::{self, Firewall};
-use veto::handler;
 use veto::handler::Handler;
 use veto::matcher::Matcher;
-use veto::notifier;
-use veto::settings;
-use veto::storage;
 use veto::storage::TargetRepository;
+use veto::{handler, notifier, settings, storage};
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Parser)]

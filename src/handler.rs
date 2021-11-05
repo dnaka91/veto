@@ -5,8 +5,7 @@ use std::io::{BufReader, Lines};
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use aho_corasick::AhoCorasick;
-use aho_corasick::AhoCorasickBuilder;
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use anyhow::Result;
 use chrono::prelude::*;
 use ipnetwork::IpNetwork;
