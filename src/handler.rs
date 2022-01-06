@@ -1,9 +1,10 @@
-use std::fs::File;
-use std::hash::BuildHasher;
-use std::io::prelude::*;
-use std::io::{BufReader, Lines};
-use std::net::IpAddr;
-use std::path::PathBuf;
+use std::{
+    fs::File,
+    hash::BuildHasher,
+    io::{prelude::*, BufReader, Lines},
+    net::IpAddr,
+    path::PathBuf,
+};
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use anyhow::Result;
@@ -12,12 +13,14 @@ use ipnetwork::IpNetwork;
 use log::{debug, info, warn};
 use regex::Regex;
 
-use crate::firewall::{Firewall, Target};
-use crate::matcher::Matcher;
-use crate::notifier::{Event, EventType};
-use crate::settings::Rule;
-use crate::storage::TargetRepository;
-use crate::{HashMap, IndexMap};
+use crate::{
+    firewall::{Firewall, Target},
+    matcher::Matcher,
+    notifier::{Event, EventType},
+    settings::Rule,
+    storage::TargetRepository,
+    HashMap, IndexMap,
+};
 
 pub struct Entry {
     pub name: String,

@@ -1,6 +1,8 @@
-use std::net::IpAddr;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    net::IpAddr,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{ensure, Result};
 use itertools::Itertools;

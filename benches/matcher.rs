@@ -1,10 +1,8 @@
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use chrono::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use veto::matcher::Matcher;
-use veto::{handler, settings};
+use veto::{handler, matcher::Matcher, settings};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let matcher = Matcher::with(Utc.ymd(2020, 10, 4).and_hms(10, 0, 0));

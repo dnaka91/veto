@@ -1,13 +1,17 @@
-use std::fmt::{self, Display};
-use std::fs;
-use std::path::PathBuf;
+use std::{
+    fmt::{self, Display},
+    fs,
+    path::PathBuf,
+};
 
 use anyhow::{Context, Result};
 use chrono::Duration;
 use ipnetwork::IpNetwork;
 use log::info;
-use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer,
+};
 
 use crate::{HashMap, IndexMap, IndexSet};
 

@@ -1,5 +1,7 @@
-use std::net::IpAddr;
-use std::path::{Path, PathBuf};
+use std::{
+    net::IpAddr,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 use chrono::prelude::*;

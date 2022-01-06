@@ -1,6 +1,8 @@
-use std::path::PathBuf;
-use std::process::Command;
-use std::{net::IpAddr, path::Path};
+use std::{
+    net::IpAddr,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{ensure, Context, Result};
 use log::warn;

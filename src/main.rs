@@ -2,21 +2,21 @@
 #![deny(rust_2018_idioms, clippy::all, clippy::pedantic)]
 #![warn(clippy::nursery)]
 
-use std::env;
-use std::path::PathBuf;
-use std::time::Duration as StdDuration;
+use std::{env, path::PathBuf, time::Duration as StdDuration};
 
 use anyhow::{Context, Result};
-use chrono::prelude::*;
-use chrono::Duration;
+use chrono::{prelude::*, Duration};
 use clap::Parser;
 use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
-use veto::firewall::{self, Firewall};
-use veto::handler::Handler;
-use veto::matcher::Matcher;
-use veto::storage::TargetRepository;
-use veto::{handler, notifier, settings, storage};
+use veto::{
+    firewall::{self, Firewall},
+    handler,
+    handler::Handler,
+    matcher::Matcher,
+    notifier, settings, storage,
+    storage::TargetRepository,
+};
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Parser)]

@@ -6,9 +6,7 @@ use aho_corasick::AhoCorasick;
 use chrono::prelude::*;
 use regex::Captures;
 
-use crate::handler::Entry;
-use crate::settings::Rule;
-use crate::IndexMap;
+use crate::{handler::Entry, settings::Rule, IndexMap};
 
 const HOST_GROUP: &str = "host";
 const TIME_GROUP: &str = "time";

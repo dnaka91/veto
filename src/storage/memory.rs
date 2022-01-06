@@ -1,25 +1,25 @@
-use std::fs;
-use std::fs::File;
-use std::hash::Hash;
-use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
-use std::ops::Drop;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::{
+    fs,
+    fs::File,
+    hash::Hash,
+    io::{prelude::*, BufReader, BufWriter},
+    ops::Drop,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use ahash::RandomState;
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use flate2::Compression;
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use log::{debug, error};
 use parking_lot::RwLock;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::HashMap;
 

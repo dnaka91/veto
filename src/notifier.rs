@@ -3,8 +3,10 @@ use std::path::PathBuf;
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, trace, warn};
-use notify::event::{EventKind, ModifyKind};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{
+    event::{EventKind, ModifyKind},
+    RecommendedWatcher, RecursiveMode, Watcher,
+};
 
 pub fn start<'a>(paths: impl Iterator<Item = &'a PathBuf>) -> Result<Notifier> {
     let (tx, rx) = crossbeam_channel::unbounded();
