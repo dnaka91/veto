@@ -20,7 +20,7 @@ use veto::{handler, notifier, settings, storage};
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Parser)]
-#[clap(about, author)]
+#[clap(about, author, version)]
 struct Opts {
     /// Level of verbosity.
     ///
