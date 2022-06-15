@@ -6,7 +6,7 @@ use std::{env, path::PathBuf, time::Duration as StdDuration};
 
 use anyhow::{Context, Result};
 use chrono::{prelude::*, Duration};
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
 use veto::{
@@ -27,7 +27,7 @@ struct Opts {
     /// Pass the flag once (-v) for slight verbosity with informative logs. Pass it twice (-vv) to
     /// include debug information as well. Pass it trice (-vvv) or more to be super verbose and log
     /// as much as possible.
-    #[clap(short, long, parse(from_occurrences))]
+    #[clap(short, long, action = ArgAction::Count)]
     verbose: u8,
     /// Alternative configuration location.
     #[clap(long, env = "VETO_CONFIG")]
