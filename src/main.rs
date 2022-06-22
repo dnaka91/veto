@@ -54,7 +54,7 @@ enum Command {
 }
 
 fn main() -> Result<()> {
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     let opts: Opts = Opts::parse();
 
