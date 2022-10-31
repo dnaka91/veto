@@ -20,22 +20,22 @@ use veto::{
 
 /// A lightweight, log file based IP blocker with focus on simplicity and speed.
 #[derive(Parser)]
-#[clap(about, author, version)]
+#[command(about, author, version)]
 struct Opts {
     /// Level of verbosity.
     ///
     /// Pass the flag once (-v) for slight verbosity with informative logs. Pass it twice (-vv) to
     /// include debug information as well. Pass it trice (-vvv) or more to be super verbose and log
     /// as much as possible.
-    #[clap(short, long, action = ArgAction::Count)]
+    #[arg(short, long, action = ArgAction::Count)]
     verbose: u8,
     /// Alternative configuration location.
-    #[clap(long, env = "VETO_CONFIG")]
+    #[arg(long, env = "VETO_CONFIG")]
     config: Option<PathBuf>,
     /// Alternative storage location.
-    #[clap(long, env = "VETO_STORAGE")]
+    #[arg(long, env = "VETO_STORAGE")]
     storage: Option<PathBuf>,
-    #[clap(subcommand)]
+    #[command(subcommand)]
     cmd: Option<Command>,
 }
 
@@ -46,7 +46,7 @@ enum Command {
     /// Match against a single log line and show statistics.
     Analyze {
         /// One of the configured rules to load.
-        #[clap(long, short)]
+        #[arg(long, short)]
         rule: String,
         /// The log line to match against.
         line: String,
