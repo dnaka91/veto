@@ -5,10 +5,10 @@
 use std::{env, path::PathBuf, time::Duration as StdDuration};
 
 use anyhow::{Context, Result};
-use chrono::{prelude::*, Duration};
 use clap::{ArgAction, Parser};
 use crossbeam_channel::{select, Receiver};
 use log::{info, warn};
+use time::{OffsetDateTime, Duration};
 use veto::{
     firewall::{self, Firewall},
     handler,
@@ -87,7 +87,7 @@ fn main() -> Result<()> {
 
     let mut files = handler::prepare_rules(settings.rules)?;
 
-    let last_unblock = Utc::now() + Duration::minutes(1);
+    let last_unblock = OffsetDateTime::now_utc() + Duration::minutes(1);
 
     firewall.install()?;
 

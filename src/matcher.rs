@@ -3,22 +3,26 @@
 use std::net::IpAddr;
 
 use aho_corasick::AhoCorasick;
-use chrono::prelude::*;
 use regex::Captures;
+use time::{format_description::FormatItem, macros::format_description, OffsetDateTime};
 
 use crate::{handler::Entry, settings::Rule, IndexMap};
 
 const HOST_GROUP: &str = "host";
 const TIME_GROUP: &str = "time";
-const TIME_FORMAT: &str = "%d/%b/%Y:%T %z";
+const TIME_FORMAT: &[FormatItem<'_>] = format_description!(
+    "[day]/[month repr:short]/[year]:[hour][minute][second] [offset_hour][offset_minute]"
+);
 
 pub struct Matcher {
-    now: DateTime<Utc>,
+    now: OffsetDateTime,
 }
 
 impl Default for Matcher {
     fn default() -> Self {
-        Self { now: Utc::now() }
+        Self {
+            now: OffsetDateTime::now_utc(),
+        }
     }
 }
 
@@ -29,7 +33,7 @@ pub struct Analysis {
 
 #[derive(Debug)]
 pub struct Match {
-    pub time: Option<(DateTime<Utc>, bool)>,
+    pub time: Option<(OffsetDateTime, bool)>,
     pub host: Option<IpAddr>,
     pub captures: IndexMap<String, Option<String>>,
     pub blacklists: IndexMap<String, String>,
@@ -43,11 +47,16 @@ impl Matcher {
 
     // Only used for benchmarks, don't use directly.
     #[must_use]
-    pub const fn with(now: DateTime<Utc>) -> Self {
+    pub const fn with(now: OffsetDateTime) -> Self {
         Self { now }
     }
 
-    pub fn find(&self, entry: &Entry, last_time: &mut DateTime<Utc>, line: &str) -> Option<IpAddr> {
+    pub fn find(
+        &self,
+        entry: &Entry,
+        last_time: &mut OffsetDateTime,
+        line: &str,
+    ) -> Option<IpAddr> {
         for matcher in &entry.matchers {
             if let Some(caps) = matcher.captures(line) {
                 match Self::match_time(&caps) {
@@ -89,7 +98,7 @@ impl Matcher {
                 let time = Self::match_time(&caps).map(|time| {
                     (
                         time,
-                        self.is_outdated(&entry.rule, Utc.timestamp(0, 0), time),
+                        self.is_outdated(&entry.rule, OffsetDateTime::UNIX_EPOCH, time),
                     )
                 });
 
@@ -124,14 +133,14 @@ impl Matcher {
     }
 
     #[inline(always)]
-    fn is_outdated(&self, rule: &Rule, last_time: DateTime<Utc>, time: DateTime<Utc>) -> bool {
+    fn is_outdated(&self, rule: &Rule, last_time: OffsetDateTime, time: OffsetDateTime) -> bool {
         time < last_time || self.now - time > rule.timeout
     }
 
     #[inline(always)]
-    fn match_time(caps: &Captures<'_>) -> Option<DateTime<Utc>> {
+    fn match_time(caps: &Captures<'_>) -> Option<OffsetDateTime> {
         caps.name(TIME_GROUP).and_then(|time| {
-            DateTime::parse_from_str(time.as_str(), TIME_FORMAT)
+            OffsetDateTime::parse(time.as_str(), TIME_FORMAT)
                 .map(Into::into)
                 .ok()
         })

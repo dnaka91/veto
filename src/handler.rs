@@ -8,10 +8,10 @@ use std::{
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use anyhow::Result;
-use chrono::prelude::*;
 use ipnetwork::IpNetwork;
 use log::{debug, info, warn};
 use regex::Regex;
+use time::OffsetDateTime;
 
 use crate::{
     firewall::{Firewall, Target},
@@ -31,7 +31,7 @@ pub struct Entry {
 
 pub struct State {
     lines: Option<Lines<BufReader<File>>>,
-    pub time: DateTime<Utc>,
+    pub time: OffsetDateTime,
 }
 
 static RULE_REGEXS: phf::Map<&str, &str> = phf::phf_map! {
@@ -47,7 +47,7 @@ pub struct Handler<TR, F> {
     pub whitelist: Vec<IpNetwork>,
     pub storage: TR,
     pub firewall: F,
-    pub last_unblock: DateTime<Utc>,
+    pub last_unblock: OffsetDateTime,
 }
 
 impl<TR, F> Handler<TR, F>
@@ -121,7 +121,7 @@ where
                 continue;
             }
 
-            let now = Utc::now();
+            let now = OffsetDateTime::now_utc();
 
             if !self
                 .storage
@@ -143,7 +143,7 @@ where
     }
 
     pub fn handle_unblock(&mut self, files: &HashMap<PathBuf, (Entry, State)>) -> Result<()> {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
 
         if self.last_unblock < now {
             self.storage.iter_outdated(|addr, path| {
@@ -186,7 +186,7 @@ where
         let file = File::open(&rule.file)?;
         let buf = BufReader::new(file);
         let lines = Some(buf.lines());
-        let time = Utc.timestamp(0, 0);
+        let time = OffsetDateTime::UNIX_EPOCH;
 
         files.insert(
             rule.file.clone(),
@@ -233,6 +233,8 @@ pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
 
 #[cfg(test)]
 mod tests {
+    use time::{format_description::well_known::{Rfc2822, Rfc3339}, macros::offset, Date, Month};
+
     use super::*;
 
     #[test]
@@ -259,11 +261,13 @@ mod tests {
             .name("time_rfc2822")
             .unwrap();
 
-        let got = DateTime::parse_from_rfc2822(value.as_str()).unwrap();
+        let got = OffsetDateTime::parse(value.as_str(), &Rfc2822).unwrap();
 
-        let expect = FixedOffset::east(9 * 3600)
-            .ymd(2014, 11, 28)
-            .and_hms(21, 0, 9);
+        let expect = Date::from_calendar_date(2014, Month::November, 28)
+            .unwrap()
+            .with_hms(21, 0, 9)
+            .unwrap()
+            .assume_offset(offset!(+9));
 
         assert_eq!(expect, got);
     }
@@ -279,11 +283,13 @@ mod tests {
             .name("time_rfc3339")
             .unwrap();
 
-        let got = DateTime::parse_from_rfc3339(value.as_str()).unwrap();
+        let got = OffsetDateTime::parse(value.as_str(), &Rfc3339).unwrap();
 
-        let expect = FixedOffset::east(9 * 3600)
-            .ymd(2014, 11, 28)
-            .and_hms(21, 0, 9);
+        let expect = Date::from_calendar_date(2014, Month::November, 28)
+        .unwrap()
+        .with_hms(21, 0, 9)
+        .unwrap()
+        .assume_offset(offset!(+9));
 
         assert_eq!(expect, got);
     }

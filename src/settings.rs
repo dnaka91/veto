@@ -5,13 +5,13 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use chrono::Duration;
 use ipnetwork::IpNetwork;
 use log::info;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer,
 };
+use time::Duration;
 
 use crate::{HashMap, IndexMap, IndexSet};
 
@@ -134,7 +134,7 @@ where
         {
             humantime::parse_duration(v)
                 .ok()
-                .and_then(|d| Duration::from_std(d).ok())
+                .and_then(|d| Duration::try_from(d).ok())
                 .ok_or_else(|| E::invalid_value(de::Unexpected::Str(v), &self))
         }
     }

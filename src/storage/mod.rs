@@ -4,8 +4,8 @@ use std::{
 };
 
 use anyhow::Result;
-use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use self::memory::MemoryDatabase;
 
@@ -15,7 +15,7 @@ mod memory;
 /// It helps to determine when to remove items from the blocklist again and holds basic statistics.
 pub trait TargetRepository {
     /// Insert a new entry into the repository or update it if it already exists.
-    fn upsert(&mut self, ip: IpAddr, until: DateTime<Utc>, file: &Path) -> Result<bool>;
+    fn upsert(&mut self, ip: IpAddr, until: OffsetDateTime, file: &Path) -> Result<bool>;
 
     /// Remove an entry by its IP address from the repository.
     fn remove(&mut self, ip: IpAddr) -> Result<()>;
@@ -37,8 +37,8 @@ struct Entry {
     /// Location of the log file that this entry came from.
     file: PathBuf,
     /// Timestamp until when this entry should be put on the blocklist.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    until: DateTime<Utc>,
+    #[serde(with = "time::serde::timestamp")]
+    until: OffsetDateTime,
     /// Flag that tells whether the current entry is still active, meaning it's still excpected to
     /// be on the blocklist. This is independent of the [`until`] field and caters for state where
     /// an entry is already expired but wasn't removed from the blocklist yet.
@@ -50,7 +50,7 @@ struct Entry {
 impl Entry {
     /// Create a new basic entry with file origin and the timestamp until when it will be blocked.
     /// The entry is considered active, which means it is expected to be already on the blocklist.
-    const fn new(file: PathBuf, until: DateTime<Utc>) -> Self {
+    const fn new(file: PathBuf, until: OffsetDateTime) -> Self {
         Self {
             file,
             until,
@@ -65,7 +65,7 @@ impl Entry {
 struct HashMapStorage(MemoryDatabase<IpAddr, Entry>);
 
 impl TargetRepository for HashMapStorage {
-    fn upsert(&mut self, ip: IpAddr, until: DateTime<Utc>, file: &Path) -> Result<bool> {
+    fn upsert(&mut self, ip: IpAddr, until: OffsetDateTime, file: &Path) -> Result<bool> {
         let mut exists = true;
 
         self.0.get_mut(|map| {
@@ -92,7 +92,7 @@ impl TargetRepository for HashMapStorage {
     where
         F: Fn(IpAddr, &Path) -> Result<()>,
     {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
 
         self.0.get(|map| {
             for (k, v) in map.iter().filter(|(_, v)| v.until >= now) {
@@ -108,7 +108,7 @@ impl TargetRepository for HashMapStorage {
     where
         F: Fn(IpAddr, &Path) -> Result<bool>,
     {
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
 
         self.0.get_mut(|map| {
             let mut changed = false;
