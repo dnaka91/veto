@@ -108,7 +108,7 @@ pub fn load(path: Option<PathBuf>) -> Result<Settings> {
 
     let content = fs::read(path).context("Failed reading settings file")?;
 
-    toml::from_slice(&content).map_err(Into::into)
+    basic_toml::from_slice(&content).map_err(Into::into)
 }
 
 /// Parse a human representation like `2h 15m` into a [`Duration`].

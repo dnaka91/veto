@@ -42,7 +42,7 @@ impl IpSet {
     fn install_for(&self, name: &str, iptables: &Path, family: &str, output: &str) -> Result<()> {
         if !output.lines().any(|l| l == name) {
             let output = Command::new(&self.ipset_path)
-                .args(&["create", name, "hash:ip", "family", family])
+                .args(["create", name, "hash:ip", "family", family])
                 .output()
                 .context("failed running ipset")?;
 
@@ -74,7 +74,7 @@ impl IpSet {
 
             if !output.lines().any(|l| l == rule) {
                 let output = Command::new(iptables)
-                    .args(&[
+                    .args([
                         "-I",
                         chain,
                         "-p",
@@ -108,7 +108,7 @@ impl IpSet {
         for chain in DEFAULT_CHAINS {
             loop {
                 let output = Command::new(iptables)
-                    .args(&[
+                    .args([
                         "-D",
                         chain,
                         "-p",
@@ -143,7 +143,7 @@ impl IpSet {
         }
 
         let output = Command::new(&self.ipset_path)
-            .args(&["destroy", name])
+            .args(["destroy", name])
             .output()
             .context("failed running ipset")?;
 
@@ -158,7 +158,7 @@ impl IpSet {
 
     fn block_for(&self, name: &str, ip: &str) -> Result<()> {
         let output = Command::new(&self.ipset_path)
-            .args(&["add", name, ip])
+            .args(["add", name, ip])
             .output()
             .context("failed running ipset")?;
 
@@ -176,7 +176,7 @@ impl IpSet {
 
     fn unblock_for(&self, name: &str, ip: &str) -> Result<()> {
         let output = Command::new(&self.ipset_path)
-            .args(&["del", name, ip])
+            .args(["del", name, ip])
             .output()
             .context("failed running ipset")?;
 
@@ -196,7 +196,7 @@ impl IpSet {
 impl Firewall for IpSet {
     fn install(&self) -> Result<()> {
         let output = Command::new(&self.ipset_path)
-            .args(&["list", "-n"])
+            .args(["list", "-n"])
             .output()
             .context("failed running ipset")?;
 
@@ -221,14 +221,14 @@ impl Firewall for IpSet {
         Ok(())
     }
 
-    fn block<'a>(&self, target: &Target<'a>) -> Result<()> {
+    fn block(&self, target: &Target<'_>) -> Result<()> {
         match target.ip {
             IpAddr::V4(ip) => self.block_for(self.name, &ip.to_string()),
             IpAddr::V6(ip) => self.block_for(self.name_v6, &ip.to_string()),
         }
     }
 
-    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()> {
+    fn unblock(&self, target: &Target<'_>) -> Result<()> {
         match target.ip {
             IpAddr::V4(ip) => self.unblock_for(self.name, &ip.to_string()),
             IpAddr::V6(ip) => self.unblock_for(self.name_v6, &ip.to_string()),

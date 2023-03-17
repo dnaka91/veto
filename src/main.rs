@@ -164,7 +164,7 @@ fn analyze(config: Option<PathBuf>, rule: &str, line: &str) -> Result<()> {
     let analysis = matcher.find_analyze(&entry, line);
 
     for (filter, matched) in analysis.matches {
-        println!("Filter: {}", filter);
+        println!("Filter: {filter}");
         if let Some(matched) = matched {
             println!("  Captures:");
             let name_len = matched
@@ -189,13 +189,13 @@ fn analyze(config: Option<PathBuf>, rule: &str, line: &str) -> Result<()> {
 
             println!(
                 "  Host: {}",
-                match matched.host {
-                    Some(host) => match host {
-                        std::net::IpAddr::V4(addr) => format!("IPv4 {}", addr),
-                        std::net::IpAddr::V6(addr) => format!("IPv6 {}", addr),
-                    },
-                    None => "no host found".to_owned(),
-                }
+                matched.host.map_or_else(
+                    || "no host found".to_owned(),
+                    |host| match host {
+                        std::net::IpAddr::V4(addr) => format!("IPv4 {addr}"),
+                        std::net::IpAddr::V6(addr) => format!("IPv6 {addr}"),
+                    }
+                )
             );
 
             let name_len = matched
@@ -207,7 +207,7 @@ fn analyze(config: Option<PathBuf>, rule: &str, line: &str) -> Result<()> {
 
             println!("  Blacklists:");
             for (name, pattern) in matched.blacklists {
-                println!("    {:2$}: {}", name, pattern, name_len);
+                println!("    {name:name_len$}: {pattern}");
             }
         } else {
             println!("  No match");

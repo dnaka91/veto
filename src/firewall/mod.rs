@@ -23,9 +23,9 @@ pub trait Firewall {
     /// Remove any previously added changes from [`Self::install`] and unblock all IPs.
     fn uninstall(&self) -> Result<()>;
     /// Add a new entry to the firewall, effectively blocking requests from the given IP.
-    fn block<'a>(&self, target: &Target<'a>) -> Result<()>;
+    fn block(&self, target: &Target<'_>) -> Result<()>;
     /// Remove an entry from the firewall.
-    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()>;
+    fn unblock(&self, target: &Target<'_>) -> Result<()>;
 }
 
 #[cfg(target_os = "linux")]

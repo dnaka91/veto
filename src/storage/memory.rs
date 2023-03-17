@@ -37,11 +37,10 @@ where
 {
     pub fn new(path: Option<PathBuf>) -> Self {
         let location = super::get_location(path);
-        let map = Arc::new(RwLock::new(if let Ok(f) = File::open(&location) {
-            bincode::deserialize_from(GzDecoder::new(BufReader::new(f))).unwrap_or_default()
-        } else {
-            HashMap::with_hasher(RandomState::new())
-        }));
+        let map = Arc::new(RwLock::new(File::open(&location).map_or_else(
+            |_| HashMap::with_hasher(RandomState::new()),
+            |f| bincode::deserialize_from(GzDecoder::new(BufReader::new(f))).unwrap_or_default(),
+        )));
         let dirty = Arc::new(AtomicBool::new(false));
 
         let map2 = map.clone();

@@ -21,35 +21,36 @@ assets = [
 ]
 
 [dependencies]
-ahash = "0.8.0"
-aho-corasick = "0.7.19"
-anyhow = "1.0.66"
+ahash = "0.8.3"
+aho-corasick = "0.7.20"
+anyhow = "1.0.69"
+basic-toml = "0.1.2"
 bincode = "1.3.3"
-chrono = { version = "0.4.22", features = ["serde"] }
-clap = { version = "4.0.18", features = ["derive", "env"] }
-crossbeam-channel = "0.5.6"
-ctrlc = { version = "3.2.3", features = ["termination"] }
+chrono = { version = "0.4.24", features = ["serde"] }
+clap = { version = "4.1.9", features = ["derive", "env"] }
+crossbeam-channel = "0.5.7"
+ctrlc = { version = "3.2.5", features = ["termination"] }
 dotenvy = "0.15.6"
-flate2 = "1.0.24"
+flate2 = "1.0.25"
 humantime = "2.1.0"
-indexmap = { version = "1.9.1", features = ["serde-1"] }
+indexmap = { version = "1.9.2", features = ["serde-1"] }
 ipnetwork = "0.20.0"
 itertools = "0.10.5"
 log = "0.4.17"
-notify = "5.0.0"
+notify = "5.1.0"
 parking_lot = "0.12.1"
 phf = { version = "0.11.1", features = ["macros"] }
 pretty_env_logger = "0.4.0"
-regex = "1.6.0"
-serde = { version = "1.0.147", features = ["derive"] }
-toml = "0.5.9"
-which = "4.3.0"
+regex = "1.7.1"
+serde = { version = "1.0.156", features = ["derive"] }
+which = "4.4.0"
 
 [dev-dependencies]
 criterion = { version = "0.4.0", default-features = false }
 
 [profile.release]
 lto = true
+strip = true
 
 [[bench]]
 name = "matcher"

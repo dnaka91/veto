@@ -1,7 +1,11 @@
 #![forbid(unsafe_code)]
 #![deny(rust_2018_idioms, clippy::all, clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![allow(clippy::missing_errors_doc, clippy::module_name_repetitions)]
+#![allow(
+    clippy::manual_let_else,
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions
+)]
 
 pub mod firewall;
 pub mod handler;

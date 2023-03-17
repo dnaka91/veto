@@ -26,11 +26,11 @@ impl IpTables {
         })
     }
 
-    fn block_args<'a>(cmd: &mut Command, target: &Target<'a>) {
-        cmd.args(&["-s", &target.ip.to_string(), "-p", "tcp"]);
+    fn block_args(cmd: &mut Command, target: &Target<'_>) {
+        cmd.args(["-s", &target.ip.to_string(), "-p", "tcp"]);
 
         if !target.ports.is_empty() {
-            cmd.args(&[
+            cmd.args([
                 "-m",
                 "multiport",
                 "--dports",
@@ -38,7 +38,7 @@ impl IpTables {
             ]);
         }
 
-        cmd.args(&["-j", "REJECT", "--reject-with", "tcp-reset"]);
+        cmd.args(["-j", "REJECT", "--reject-with", "tcp-reset"]);
     }
 
     fn select_cmd(&self, ip: IpAddr) -> &Path {
@@ -126,10 +126,10 @@ impl Firewall for IpTables {
         Ok(())
     }
 
-    fn block<'a>(&self, target: &Target<'a>) -> Result<()> {
+    fn block(&self, target: &Target<'_>) -> Result<()> {
         let mut cmd = Command::new(self.select_cmd(target.ip));
 
-        cmd.args(&["-I", self.name]);
+        cmd.args(["-I", self.name]);
 
         Self::block_args(&mut cmd, target);
 
@@ -145,10 +145,10 @@ impl Firewall for IpTables {
         Ok(())
     }
 
-    fn unblock<'a>(&self, target: &Target<'a>) -> Result<()> {
+    fn unblock(&self, target: &Target<'_>) -> Result<()> {
         let mut cmd = Command::new(self.select_cmd(target.ip));
 
-        cmd.args(&["-D", self.name]);
+        cmd.args(["-D", self.name]);
 
         Self::block_args(&mut cmd, target);
 
