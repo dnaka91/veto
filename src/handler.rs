@@ -233,7 +233,10 @@ pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
 
 #[cfg(test)]
 mod tests {
-    use time::{format_description::well_known::{Rfc2822, Rfc3339}, macros::offset, Date, Month};
+    use time::{
+        format_description::well_known::{Rfc2822, Rfc3339},
+        macros::datetime,
+    };
 
     use super::*;
 
@@ -262,12 +265,7 @@ mod tests {
             .unwrap();
 
         let got = OffsetDateTime::parse(value.as_str(), &Rfc2822).unwrap();
-
-        let expect = Date::from_calendar_date(2014, Month::November, 28)
-            .unwrap()
-            .with_hms(21, 0, 9)
-            .unwrap()
-            .assume_offset(offset!(+9));
+        let expect = datetime!(2014-11-28 21:00:09 +9);
 
         assert_eq!(expect, got);
     }
@@ -284,12 +282,7 @@ mod tests {
             .unwrap();
 
         let got = OffsetDateTime::parse(value.as_str(), &Rfc3339).unwrap();
-
-        let expect = Date::from_calendar_date(2014, Month::November, 28)
-        .unwrap()
-        .with_hms(21, 0, 9)
-        .unwrap()
-        .assume_offset(offset!(+9));
+        let expect = datetime!(2014-11-28 21:00:09 +9);
 
         assert_eq!(expect, got);
     }
