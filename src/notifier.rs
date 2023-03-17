@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use crossbeam_channel::{Receiver, Sender};
+use flume::{Receiver, Sender};
 use log::{debug, trace, warn};
 use notify::{
     event::{EventKind, ModifyKind},
@@ -9,7 +9,7 @@ use notify::{
 };
 
 pub fn start<'a>(paths: impl Iterator<Item = &'a PathBuf>) -> Result<Notifier> {
-    let (tx, rx) = crossbeam_channel::unbounded();
+    let (tx, rx) = flume::unbounded();
     let handler = Handler { tx };
 
     let mut watcher = notify::recommended_watcher(move |res| handler.handle(res))?;

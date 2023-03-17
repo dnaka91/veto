@@ -6,9 +6,9 @@ use std::{env, path::PathBuf, time::Duration as StdDuration};
 
 use anyhow::{Context, Result};
 use clap::{ArgAction, Parser};
-use crossbeam_channel::{select, Receiver};
+use flume::{select::SelectError, Receiver};
 use log::{info, warn};
-use time::{OffsetDateTime, Duration};
+use time::{Duration, OffsetDateTime};
 use veto::{
     firewall::{self, Firewall},
     handler,
@@ -117,17 +117,20 @@ fn main() -> Result<()> {
     }
 
     let events = notifier::start(files.keys())?;
-    let unblock = crossbeam_channel::tick(StdDuration::from_secs(60));
 
-    #[allow(clippy::useless_transmute)]
     loop {
-        select! {
-            recv(shutdown) -> _ => {
+        let result = flume::Selector::new()
+            .recv(&shutdown, |_| None)
+            .recv(&events.rx, Result::ok)
+            .wait_timeout(StdDuration::from_secs(60));
+
+        match result {
+            Ok(None) => {
                 info!("shutting down");
                 break;
             }
-            recv(events.rx) -> event => handler.handle_event(&mut files, event.unwrap())?,
-            recv(unblock) -> _ => handler.handle_unblock(&files)?,
+            Ok(Some(event)) => handler.handle_event(&mut files, event)?,
+            Err(SelectError::Timeout) => handler.handle_unblock(&files)?,
         }
     }
 
@@ -137,7 +140,7 @@ fn main() -> Result<()> {
 }
 
 fn create_shutdown() -> Result<Receiver<()>> {
-    let (tx, rx) = crossbeam_channel::bounded(0);
+    let (tx, rx) = flume::bounded(0);
 
     ctrlc::set_handler(move || {
         if let Err(e) = tx.send(()) {

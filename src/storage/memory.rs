@@ -15,8 +15,8 @@ use std::{
 
 use ahash::RandomState;
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use flume::Sender;
 use log::{debug, error};
 use parking_lot::RwLock;
 use serde::{de::DeserializeOwned, Serialize};
@@ -46,14 +46,12 @@ where
         let map2 = map.clone();
         let dirty2 = dirty.clone();
 
-        let (stop_tx, stop_rx) = crossbeam_channel::bounded(0);
-        let ticker = crossbeam_channel::tick(Duration::from_millis(500));
+        let (stop_tx, stop_rx) = flume::bounded(0);
 
-        #[allow(clippy::useless_transmute)]
         let handle = thread::spawn(move || loop {
-            crossbeam_channel::select! {
-                recv(stop_rx) -> _ => break,
-                recv(ticker) -> _ => {
+            match stop_rx.recv_timeout(Duration::from_millis(500)) {
+                Err(_) => break,
+                Ok(_) => {
                     if dirty2.load(Ordering::Relaxed) {
                         if let Err(e) = save(&location, &map2.read()) {
                             error!("Failed saving storage: {:?}", e);
