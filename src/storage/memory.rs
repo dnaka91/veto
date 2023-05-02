@@ -85,7 +85,7 @@ where
 
 impl<K, V> Drop for MemoryDatabase<K, V> {
     fn drop(&mut self) {
-        self.stop.send(()).unwrap();
+        self.stop.send(()).ok();
 
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();

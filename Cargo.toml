@@ -22,17 +22,17 @@ assets = [
 
 [dependencies]
 ahash = "0.8.3"
-aho-corasick = "0.7.20"
-anyhow = "1.0.69"
+aho-corasick = "1.0.1"
+anyhow = "1.0.71"
 basic-toml = "0.1.2"
 bincode = "1.3.3"
-clap = { version = "4.1.9", features = ["derive", "env"] }
+clap = { version = "4.2.5", features = ["derive", "env"] }
 ctrlc = { version = "3.2.5", features = ["termination"] }
-dotenvy = "0.15.6"
-flate2 = "1.0.25"
+dotenvy = "0.15.7"
+flate2 = "1.0.26"
 flume = { version = "0.10.14", default-features = false, features = ["select"] }
 humantime = "2.1.0"
-indexmap = { version = "1.9.2", features = ["serde-1"] }
+indexmap = { version = "1.9.3", features = ["serde-1"] }
 ipnetwork = "0.20.0"
 itertools = "0.10.5"
 log = "0.4.17"
@@ -40,8 +40,8 @@ notify = "5.1.0"
 parking_lot = "0.12.1"
 phf = { version = "0.11.1", features = ["macros"] }
 pretty_env_logger = "0.4.0"
-regex = "1.7.1"
-serde = { version = "1.0.156", features = ["derive"] }
+regex = "1.8.1"
+serde = { version = "1.0.160", features = ["derive"] }
 time = { version = "0.3.20", features = ["macros", "parsing", "serde-well-known"] }
 which = "4.4.0"
 

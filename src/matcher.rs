@@ -161,7 +161,7 @@ impl Matcher {
             if let Some(value) = caps.name(name) {
                 blacklist
                     .find(value.as_str())
-                    .map(|m| (name.as_str(), m.pattern()))
+                    .map(|m| (name.as_str(), m.pattern().as_usize()))
             } else {
                 None
             }

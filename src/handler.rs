@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
+use aho_corasick::AhoCorasick;
 use anyhow::Result;
 use ipnetwork::IpNetwork;
 use log::{debug, info, warn};
@@ -213,15 +213,14 @@ pub fn prepare_rule(name: String, rule: Rule) -> Result<Entry> {
         .blacklists
         .iter()
         .map(|(k, v)| {
-            (
+            Ok((
                 k.clone(),
-                AhoCorasickBuilder::new()
+                AhoCorasick::builder()
                     .ascii_case_insensitive(true)
-                    .dfa(true)
-                    .build(v),
-            )
+                    .build(v)?,
+            ))
         })
-        .collect();
+        .collect::<Result<_>>()?;
 
     Ok(Entry {
         name,

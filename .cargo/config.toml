@@ -1,2 +1,5 @@
 [build]
-rustflags = ["-C", "target-feature=+aes"]
+rustflags = [
+    "-C", "target-cpu=generic",
+    "-C", "target-feature=+aes",
+]
