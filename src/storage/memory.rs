@@ -51,7 +51,7 @@ where
         let handle = thread::spawn(move || loop {
             match stop_rx.recv_timeout(Duration::from_millis(500)) {
                 Err(_) => break,
-                Ok(_) => {
+                Ok(()) => {
                     if dirty2.load(Ordering::Relaxed) {
                         if let Err(e) = save(&location, &map2.read()) {
                             error!("Failed saving storage: {:?}", e);
